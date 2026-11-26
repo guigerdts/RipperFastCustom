@@ -1,7 +1,9 @@
 # RipperFastCustom — Agent Instructions
 
 Adobe Photoshop UXP plugin for screen printing (serigrafía), DTF and halftone generation.
-Local-only repository: **no remote, no publishing** without an explicit human decision.
+The source is hosted in a public GitHub repository at
+<https://github.com/guigerdts/RipperFastCustom>. Pushing, publishing a release, or making any
+other remote change requires explicit human authorization for that concrete action.
 
 Before changing anything, read `README.md` and `docs/ARCHITECTURE.md`. Engineering choices
 and their rationale live in `docs/DECISIONS.md` (closed E0/E1 record) and `docs/adr/`
@@ -15,12 +17,16 @@ Hard rules enforced by tests, not by goodwill:
 - Unimplemented feature modules render an explicit pending screen — never simulated
   behaviour.
 - Run `npm run check` before every commit; it must exit 0.
+- Run `gga run` as the mandatory quality gate before committing. Never disable, skip or
+  bypass the pre-commit hook.
 
 ## Agent skills
 
 ### Issue tracker
 
-Local markdown tickets under `.scratch/<feature>/` — there is no git remote. See `docs/agents/issue-tracker.md`.
+Local markdown tickets under `.scratch/<feature>/` are the canonical specification and
+ticket system. They are not synchronized with GitHub Issues, and no GitHub issue is created
+automatically. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

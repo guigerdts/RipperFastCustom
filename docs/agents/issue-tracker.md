@@ -2,9 +2,10 @@
 
 Issues and specs for this repo live as markdown files in `.scratch/`.
 
-There is **no git remote** and none is planned: this repository is local-only until an
-explicit decision to publish. No skill may call `gh`, `glab`, or any network tracker for
-this repo.
+The code is hosted in a public GitHub repository, but `.scratch/` remains the canonical
+technical tracking system: specs and tickets are Markdown files, not GitHub Issues. Nothing
+is synchronized to GitHub Issues and no issue is created remotely. No skill may call `gh`,
+`glab`, or any network tracker for this repo.
 
 ## Conventions
 

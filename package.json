@@ -4,7 +4,7 @@
   "private": true,
   "description": "Professional Photoshop UXP plugin for screen printing, DTF and advanced halftone generation.",
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=20"
   },

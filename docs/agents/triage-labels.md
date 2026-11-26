@@ -16,7 +16,8 @@ Edit the "Label in our tracker" column to match whatever vocabulary you actually
 
 ## How labels are stored locally
 
-The tracker is local markdown (see `issue-tracker.md`), so a "label" is a line in the
+Statuses and labels are managed as Markdown (see `issue-tracker.md`). They do not depend on
+GitHub Issues, and nothing is created or synchronized remotely. A "label" is a line in the
 ticket file, not a tracker API call:
 
 ```markdown
@@ -24,4 +25,4 @@ Status: ready-for-agent
 ```
 
 One status line per ticket, near the top, alongside `Type:` and `Blocked by:` when present.
-There is no `gh label create` step — nothing is created remotely.
+There is no `gh label create` step and no automatic remote label creation.

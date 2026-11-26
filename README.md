@@ -112,4 +112,7 @@ docs/                    Architecture, compatibility, development, decisions, ro
 
 ## License
 
-Private, unlicensed. Not published to any remote repository.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Guillermo Barros.
+
+The source is developed in the open at
+[github.com/guigerdts/RipperFastCustom](https://github.com/guigerdts/RipperFastCustom).
