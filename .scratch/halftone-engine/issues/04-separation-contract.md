@@ -1,7 +1,7 @@
 # 04: Separation contract with declared mapping and optional ICC provenance
 
 Type: task
-Status: ready-for-human
+Status: done
 Feature: halftone-engine
 Spec ticket: 3 of 12
 Spec: ../spec.md
@@ -165,3 +165,18 @@ acceptance criterion.
 - Focused suite `tests/unit/halftone/separation-contract.test.ts` — 45 passed (was 41; +4
   regression tests for F1/F2/F3).
 - `npx tsc --noEmit` exit 0.
+
+### Integration evidence
+
+- Implementation commit: `be572f3` (separation stage contract).
+- Push: `ef92803..be572f3 master -> master` (fast-forward, no force push).
+- Pull request: none. `master` has no branch protection and the repository declares no CI
+  workflows, so ordinary repository policy integrates by direct push; no PR is required.
+- CI: no GitHub Actions workflows exist in the repository. The mandatory local gates were run on
+  the exact integrated commit: `npm run check` exit 0 (205 passed, 4 skipped), `npm run build`
+  exit 0 (30.9 kB), Prettier clean, `git diff --check` clean, `gga run` PASS on `be572f3`.
+- Remote verification: `git fetch origin`, then `origin/master` = `be572f3`; the commit count
+  `origin/master..HEAD` is 0 and the working tree is clean.
+
+Ticket 04 is `done`. Separation admits exactly the three declared modes; no implicit conversion was
+introduced and no channel-set assumption (CMYK or otherwise) was baked into the engine.
