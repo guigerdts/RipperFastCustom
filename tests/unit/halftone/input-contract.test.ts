@@ -193,6 +193,59 @@ describe('prepared-artwork detection', () => {
     expect(black.status).toBe('accepted');
     expect(white.status).toBe('accepted');
   });
+
+  it('detects a 16-bit binary tonal distribution using both extremes', () => {
+    const result = validateInputContract(
+      makeInput({
+        bitDepth: 16,
+        data: new Uint16Array([0, 65_535, 0, 65_535, 65_535, 0, 0, 65_535, 65_535, 0, 65_535, 0]),
+      }),
+    );
+
+    expect(result.status).toBe('rejected');
+    const issue = result.issues.find((entry) => entry.code === 'input.prepared_artwork');
+    expect(issue?.context.details?.signals).toContain('tonal-distribution');
+  });
+
+  it('does not flag a 16-bit image that uses intermediate samples', () => {
+    const result = validateInputContract(
+      makeInput({
+        bitDepth: 16,
+        data: new Uint16Array([0, 65_535, 30_000, 65_535, 0, 1, 2, 3, 4, 5, 6, 7]),
+      }),
+    );
+
+    expect(result.status).toBe('accepted');
+    expect(result.issues).toEqual([]);
+  });
+
+  it('does not flag a uniform 16-bit image as binary tonal distribution', () => {
+    const black = validateInputContract(makeInput({ bitDepth: 16, data: new Uint16Array(12) }));
+    const white = validateInputContract(
+      makeInput({ bitDepth: 16, data: new Uint16Array(12).fill(65_535) }),
+    );
+
+    expect(black.status).toBe('accepted');
+    expect(white.status).toBe('accepted');
+  });
+
+  it('accepts an acknowledged override of the 16-bit tonal-distribution signal', () => {
+    const result = validateInputContract(
+      makeInput({
+        bitDepth: 16,
+        data: new Uint16Array([0, 65_535, 0, 65_535, 65_535, 0, 0, 65_535, 65_535, 0, 65_535, 0]),
+        preparedArtworkOverride: {
+          acknowledged: true,
+          reason: 'posterised 16-bit artwork approved',
+        },
+      }),
+    );
+
+    expect(result.status).toBe('accepted');
+    if (result.status === 'accepted') {
+      expect(result.overrides[0]?.signals).toEqual(['tonal-distribution']);
+    }
+  });
 });
 
 describe('prepared-artwork override', () => {
@@ -206,6 +259,62 @@ describe('prepared-artwork override', () => {
 
     expect(result.status).toBe('rejected');
     expect(codes(result)).toContain('input.prepared_artwork');
+  });
+
+  it.each([
+    ['an empty reason', ''],
+    ['a whitespace-only reason', '   '],
+    ['a tab-and-newline reason', '\t\n '],
+  ])('rejects an acknowledged override with %s', (_name, reason) => {
+    const result = validateInputContract(
+      makeInput({
+        sourceKind: 'prepared-artwork',
+        preparedArtworkOverride: { acknowledged: true, reason },
+      }),
+    );
+
+    expect(result.status).toBe('rejected');
+    expect(codes(result)).toEqual(['input.prepared_artwork_override_reason_missing']);
+    const issue = result.issues[0];
+    expect(issue?.severity).toBe('error');
+    expect(issue?.scope).toBe('input');
+    expect(issue?.context.parameter).toBe('preparedArtworkOverride.reason');
+    expect('overrides' in result).toBe(false);
+  });
+
+  it('does not emit the reason error for an unacknowledged override with a blank reason', () => {
+    const result = validateInputContract(
+      makeInput({
+        sourceKind: 'prepared-artwork',
+        preparedArtworkOverride: { acknowledged: false, reason: '' },
+      }),
+    );
+
+    expect(result.status).toBe('rejected');
+    expect(codes(result)).toEqual(['input.prepared_artwork']);
+  });
+
+  it('records a valid reason for the snapshot', () => {
+    const result = validateInputContract(
+      makeInput({
+        sourceKind: 'prepared-artwork',
+        preparedArtworkOverride: {
+          acknowledged: true,
+          reason: 'approved by prepress after email',
+        },
+      }),
+    );
+
+    expect(result.status).toBe('accepted');
+    if (result.status === 'accepted') {
+      expect(result.overrides).toEqual([
+        {
+          kind: 'prepared-artwork',
+          reason: 'approved by prepress after email',
+          signals: ['source-kind'],
+        },
+      ]);
+    }
   });
 
   it('accepts an acknowledged override, warns and records it for the snapshot', () => {
@@ -297,6 +406,10 @@ describe('input gate result shape', () => {
       makeInput({ width: 0 }),
       makeInput({ data: new Uint8Array(1) }),
       makeInput({ sourceKind: 'prepared-artwork' }),
+      makeInput({
+        sourceKind: 'prepared-artwork',
+        preparedArtworkOverride: { acknowledged: true, reason: '   ' },
+      }),
     ];
 
     for (const input of fixtures) {

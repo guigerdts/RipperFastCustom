@@ -56,6 +56,7 @@ export const ISSUE_REGISTRY = {
   'input.data_size_mismatch': { severity: 'error', scope: 'input' },
   'input.prepared_artwork': { severity: 'error', scope: 'input' },
   'input.prepared_artwork_override': { severity: 'warning', scope: 'input' },
+  'input.prepared_artwork_override_reason_missing': { severity: 'error', scope: 'input' },
   'profile.missing_am_parameter': { severity: 'error', scope: 'profile' },
   'profile.invalid_am_parameter': { severity: 'error', scope: 'profile' },
   'profile.unsupported_method': { severity: 'error', scope: 'profile' },

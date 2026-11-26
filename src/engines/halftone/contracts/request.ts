@@ -10,7 +10,8 @@ export type InputSourceKind = 'continuous-tone' | 'prepared-artwork';
  * input that its detection signals classify as prepared artwork only by
  * acknowledging the risk. The reason is recorded so the snapshot can preserve
  * the decision; `acknowledged: false` is representable and is rejected by the
- * input gate.
+ * input gate. Acknowledging requires a non-empty reason: a blank reason is
+ * rejected and never recorded.
  */
 export interface PreparedArtworkOverride {
   readonly acknowledged: boolean;

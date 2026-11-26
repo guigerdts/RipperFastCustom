@@ -14,9 +14,10 @@
  * - `tonal-distribution` — the documented check below.
  *
  * A caller may override the detection only for the declaration and
- * distribution signals, and only with an explicit acknowledgment. A binary bit
- * depth or a pre-separated/pre-screened layout describes material the engine
- * cannot represent as continuous tone, so no override makes it screenable.
+ * distribution signals, and only with an explicit acknowledgment and a
+ * non-empty reason. A binary bit depth or a pre-separated/pre-screened layout
+ * describes material the engine cannot represent as continuous tone, so no
+ * override makes it screenable.
  */
 
 import { createIssue, resolveOutcomeStatus, toJsonValue } from './contracts/issue';
@@ -192,9 +193,26 @@ function describePreparedArtwork(
     ];
   }
 
+  const reason: unknown = override.reason;
+
+  if (typeof reason !== 'string' || reason.trim().length === 0) {
+    return [
+      createIssue(
+        'input.prepared_artwork_override_reason_missing',
+        'A prepared-artwork override requires a non-empty reason; the acknowledgment was not recorded.',
+        {
+          offendingValue: toJsonValue(reason),
+          expected: 'non-empty reason',
+          parameter: 'preparedArtworkOverride.reason',
+          details: { signals: [...signals] },
+        },
+      ),
+    ];
+  }
+
   overrides.push({
     kind: 'prepared-artwork',
-    reason: override.reason,
+    reason,
     signals: [...signals],
   });
 
