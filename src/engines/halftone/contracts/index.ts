@@ -1,4 +1,5 @@
 export * from './issue';
+export * from './geometry';
 export * from './tonal';
 export * from './screening';
 export * from './profile';
