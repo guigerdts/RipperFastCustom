@@ -1,7 +1,7 @@
 # 03: Input contract and prepared-artwork detection
 
 Type: task
-Status: ready-for-human
+Status: done
 Feature: halftone-engine
 Spec ticket: 2 of 12
 Spec: ../spec.md
@@ -125,3 +125,24 @@ colour conversion.
   16-bit image is not flagged, and confirm that an acknowledged override of the 16-bit
   tonal-distribution signal is accepted with a warning and a recorded override.
 - No threshold, detection rule or override semantics changed.
+
+### Human approval and integration (2026-11-26)
+
+Technical review accepted after corrections M1 and M3: 8/8 acceptance criteria PASS, no blocking
+defects.
+
+Integration evidence:
+
+- Implementation commits: `44f05af` (input gate) and `91b54df` (corrections M1, M3).
+- Push: `1a1c405..91b54df master -> master` (fast-forward, no force push).
+- Pull request: none. `master` has no branch protection and the repository declares no CI
+  workflows, so ordinary repository policy integrates by direct push; no PR is required.
+- CI: no GitHub Actions workflows exist in the repository. The mandatory local gates were run on
+  the exact integrated commit: `npm run check` exit 0 (160 passed, 4 skipped), `npm run build`
+  exit 0 (30.9 kB), Prettier clean, `git diff --check` clean, `gga run` PASS and `gga run --ci`
+  PASS on `91b54df`.
+- Remote verification: `git fetch origin` then `origin/master` = `91b54df`, `git rev-list --count
+  origin/master..HEAD` = 0, working tree clean.
+
+Ticket 03 is `done`. No threshold, detection rule or override semantics were changed during
+integration.
