@@ -141,8 +141,8 @@ Integration evidence:
   the exact integrated commit: `npm run check` exit 0 (160 passed, 4 skipped), `npm run build`
   exit 0 (30.9 kB), Prettier clean, `git diff --check` clean, `gga run` PASS and `gga run --ci`
   PASS on `91b54df`.
-- Remote verification: `git fetch origin` then `origin/master` = `91b54df`, `git rev-list --count
-  origin/master..HEAD` = 0, working tree clean.
+- Remote verification: `git fetch origin`, then `origin/master` = `91b54df`; the commit count
+  `origin/master..HEAD` is 0 and the working tree is clean.
 
 Ticket 03 is `done`. No threshold, detection rule or override semantics were changed during
 integration.
