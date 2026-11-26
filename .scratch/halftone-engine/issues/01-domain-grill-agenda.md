@@ -126,3 +126,39 @@ attribute, and invariants I1–I9 with method-scoped caveats. Added `docs/DOMAIN
 ADR-0008 (immutable snapshot), ADR-0009 (method-dependent screening configuration) and ADR-0010
 (four tonal stages). Domain remains incomplete: hybrid, spot screening, mesh-to-LPI, CMYK angles
 and DTF physical parameters are open. Next: scoped `to-spec` for the AM core.
+
+### 2026-11-26 — Round 3 approved; to-spec opened
+
+Owner approved the Round 3 close and authorized a scoped `to-spec` for the AM core. Domain work
+committed as `8930f25`. Specification published at `.scratch/halftone-engine/spec.md` with
+`Status: needs-triage` pending owner review. OD1 (separation conversion model) and OD2
+(reproduction-limit semantics) need a decision before `to-tickets`.
+
+### 2026-11-26 — Spec revision 2 (conditional approval incorporated)
+
+Owner approved OD1 = C (declared mapping mandatory, ICC transform optional) and OD2 = A (linear
+remap between `a_wf` and `a_vf`, clamped at both ends), with precision requests. Revision 2 of
+`.scratch/halftone-engine/spec.md` now defines the admitted and rejected separation modes, requires
+reproducible transform provenance per channel, records the exact limit remap and validation,
+specifies lattice origin/phase/alignment, canvas boundary handling, the round-half-up canvas rule
+and tile/block byte identity, formalizes addressability as distinct digital coverages, and replaces
+the universal PPI/LPI rule with a profile-declared input-sampling threshold. `Status: needs-triage`
+remains until this revision is approved. No code was changed.
+
+### 2026-11-26 — Revision 2 approved; spec ready-for-agent
+
+Owner approved revision 2 integrally and authorized `Status: ready-for-agent`. The three final
+controls were run before the commit:
+
+1. Boundary definitions: `round-half-up(x) = floor(x + 0.5)` on non-negative values, zero-dimension
+   rejection, floor-based cell indexing for negative coordinates, exact edge-clamp replication and
+   `clipped: true` with `marked / visible`.
+2. Determinism scope: byte identity only for the same runtime and declared numeric environment
+   (IEEE-754 binary64, no FMA contraction, no platform transcendentals); no universal binary
+   equivalence across architectures.
+3. Snapshot self-containment: effective parameter values embedded, not only hashes; ICC profile
+   bytes or a content-addressed immutable artifact verified by hash; versioned canonicalisation and
+   SHA-256; reconstruction without a mutable external file.
+
+`npm run check` and `npm run build` passed. Commit: `docs(spec): add AM halftone core specification`
+(local only, no push). Next: `to-tickets`.
