@@ -19,7 +19,7 @@ declared but intentionally **not implemented yet**; they appear as explicit pend
 | Environment detection (Photoshop version, UXP version, active document, capabilities)                            | done                                 |
 | Spanish/English i18n with typed keys and instant switching                                                       | done                                 |
 | Adapter layer (`PhotoshopHostAdapter`, `DocumentService`, `LayerService`, `UXPEnvironmentService`)               | done                                 |
-| Automated tests (host-independent)                                                                               | done — 66 passing                    |
+| Automated tests (host-independent)                                                                               | done — 107 passed, 4 skipped         |
 | Installable build in `dist/`                                                                                     | done                                 |
 | Loading inside real Photoshop                                                                                    | **pending — requires Windows**       |
 | Screen printing / DTF / halftone engines                                                                         | pending (boundaries documented only) |

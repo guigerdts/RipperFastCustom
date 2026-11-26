@@ -127,3 +127,68 @@ software.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — layers, boundaries, data flow.
 - [DECISIONS.md](DECISIONS.md) — why each technical choice was made.
 - [ROADMAP.md](ROADMAP.md) — what lands next.
+
+---
+
+## 8. GGA pre-commit review
+
+Every commit runs Gentleman Guardian Angel through the repository hook at
+`.git/hooks/pre-commit`:
+
+```bash
+gga run || exit 1
+```
+
+The hook is mandatory. Never disable GGA, remove the hook, or commit with `--no-verify`.
+
+### Nested OpenCode execution
+
+`.gga` configures GGA with `PROVIDER="opencode"`, so `gga run` starts a nested
+`opencode run`. When it is launched from inside an active OpenCode session, the child
+process inherits session variables that make it attach to the live host instead of running
+standalone:
+
+- `OPENCODE=1` marks the process as already inside OpenCode.
+- `OPENCODE_SESSION_ID` binds it to the current host session.
+- `OPENCODE_TERMINAL=1` marks the host terminal mode.
+
+With those variables present, the nested CLI can restart or hang the host, and the GGA
+wrapper then waits until its `TIMEOUT` expires.
+
+### Isolated procedure
+
+When that conflict appears, run GGA in a sanitized environment. This is the exact command
+used in this repository:
+
+```bash
+mkdir -p /tmp/opencode/gga-xdg/data /tmp/opencode/gga-xdg/state
+
+env -u OPENCODE -u OPENCODE_SESSION_ID -u OPENCODE_TERMINAL \
+    -u AI_AGENT -u GENTLE_AI_OPENCODE_RELAY_CONTRACT \
+    XDG_DATA_HOME=/tmp/opencode/gga-xdg/data \
+    XDG_STATE_HOME=/tmp/opencode/gga-xdg/state \
+    OPENCODE_AGENT=plan \
+    gga run
+```
+
+- `env -u` removes the inherited host-session variables; `AI_AGENT` and
+  `GENTLE_AI_OPENCODE_RELAY_CONTRACT` are the OpenCode relay markers and are part of the
+  same sanitized invocation.
+- The isolated `XDG_DATA_HOME` and `XDG_STATE_HOME` keep the nested CLI away from the
+  host's data and state.
+- `OPENCODE_AGENT=plan` selects the lightweight `plan` agent profile for the review.
+
+Run the commit with the same sanitized environment so the pre-commit hook inherits it:
+
+```bash
+env -u OPENCODE -u OPENCODE_SESSION_ID -u OPENCODE_TERMINAL \
+    -u AI_AGENT -u GENTLE_AI_OPENCODE_RELAY_CONTRACT \
+    XDG_DATA_HOME=/tmp/opencode/gga-xdg/data \
+    XDG_STATE_HOME=/tmp/opencode/gga-xdg/state \
+    OPENCODE_AGENT=plan \
+    git commit -m "..."
+```
+
+GGA caches reviewed files. A cache-enabled sanitized `gga run` populates that cache, and
+the hook then passes those files from cache. `gga run --no-cache` reviews everything but
+does not populate the cache.
