@@ -67,6 +67,16 @@ export const ISSUE_REGISTRY = {
   'channel.limits_invalid': { severity: 'error', scope: 'channel' },
   'channel.limits_identity': { severity: 'warning', scope: 'channel' },
   'channel.white_requires_mask': { severity: 'error', scope: 'channel' },
+  'separation.invalid_input': { severity: 'error', scope: 'separation' },
+  'separation.undeclared_mapping': { severity: 'error', scope: 'separation' },
+  'separation.invalid_mapping': { severity: 'error', scope: 'separation' },
+  'separation.channel_count_mismatch': { severity: 'error', scope: 'separation' },
+  'separation.invalid_matrix': { severity: 'error', scope: 'separation' },
+  'separation.invalid_transfer_function': { severity: 'error', scope: 'separation' },
+  'separation.unidentifiable_transform': { severity: 'error', scope: 'separation' },
+  'separation.invalid_transform_output': { severity: 'error', scope: 'separation' },
+  'separation.mask_source_missing': { severity: 'error', scope: 'separation' },
+  'separation.mask_source_invalid': { severity: 'error', scope: 'separation' },
 } as const satisfies Record<string, IssueDefinition>;
 
 export type IssueCode = keyof typeof ISSUE_REGISTRY;

@@ -1,4 +1,5 @@
 import type { ScreeningConfiguration } from './screening';
+import type { SeparationDeclaration } from './separation';
 import type { ReproductionLimits, ToneReproductionCurve } from './tonal';
 
 /** Known process kinds. The field itself is an open, extensible string. */
@@ -39,6 +40,13 @@ export interface ProductionProfile<TProcessAttributes = never> {
   readonly version: string;
   readonly processKind: ProcessKind;
   readonly channels: readonly InkChannel[];
+  /**
+   * The declared conversion from input data to ink channels. Optional only so
+   * a mask-only profile is representable; a profile with tone channels and no
+   * declaration is rejected by the separation stage instead of being converted
+   * implicitly.
+   */
+  readonly separation?: SeparationDeclaration;
   readonly allowedOutputResolutions?: readonly number[];
   readonly minimumCellPixels?: number;
   readonly processAttributes?: TProcessAttributes;
