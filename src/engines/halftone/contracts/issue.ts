@@ -48,6 +48,14 @@ export interface IssueDefinition {
  * same way.
  */
 export const ISSUE_REGISTRY = {
+  'input.invalid_dimensions': { severity: 'error', scope: 'input' },
+  'input.ppi_missing': { severity: 'error', scope: 'input' },
+  'input.invalid_ppi': { severity: 'error', scope: 'input' },
+  'input.unsupported_bit_depth': { severity: 'error', scope: 'input' },
+  'input.unsupported_layout': { severity: 'error', scope: 'input' },
+  'input.data_size_mismatch': { severity: 'error', scope: 'input' },
+  'input.prepared_artwork': { severity: 'error', scope: 'input' },
+  'input.prepared_artwork_override': { severity: 'warning', scope: 'input' },
   'profile.missing_am_parameter': { severity: 'error', scope: 'profile' },
   'profile.invalid_am_parameter': { severity: 'error', scope: 'profile' },
   'profile.unsupported_method': { severity: 'error', scope: 'profile' },

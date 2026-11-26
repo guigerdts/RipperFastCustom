@@ -6,8 +6,21 @@ export type InputLayout = 'rgb' | 'grayscale';
 export type InputSourceKind = 'continuous-tone' | 'prepared-artwork';
 
 /**
- * Continuous-tone raster input. Validation and prepared-artwork detection are
- * ticket 03; this module only fixes the shape the request carries.
+ * Explicit prepared-artwork override. A caller may ask the engine to screen an
+ * input that its detection signals classify as prepared artwork only by
+ * acknowledging the risk. The reason is recorded so the snapshot can preserve
+ * the decision; `acknowledged: false` is representable and is rejected by the
+ * input gate.
+ */
+export interface PreparedArtworkOverride {
+  readonly acknowledged: boolean;
+  readonly reason: string;
+}
+
+/**
+ * Continuous-tone raster input. Validation and prepared-artwork detection live
+ * in the input gate (`halftone/input.ts`); this module fixes the shape the
+ * request carries.
  */
 export interface ContinuousToneInput {
   readonly width: number;
@@ -18,6 +31,7 @@ export interface ContinuousToneInput {
   readonly data: Uint8Array | Uint16Array;
   readonly icc?: string;
   readonly sourceKind?: InputSourceKind;
+  readonly preparedArtworkOverride?: PreparedArtworkOverride;
 }
 
 export interface OutputSettings {
