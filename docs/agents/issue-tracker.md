@@ -1,0 +1,42 @@
+# Issue tracker: Local Markdown
+
+Issues and specs for this repo live as markdown files in `.scratch/`.
+
+There is **no git remote** and none is planned: this repository is local-only until an
+explicit decision to publish. No skill may call `gh`, `glab`, or any network tracker for
+this repo.
+
+## Conventions
+
+- One feature per directory: `.scratch/<feature-slug>/`
+- The spec is `.scratch/<feature-slug>/spec.md`
+- Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
+- Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
+- Comments and conversation history append to the bottom of the file under a `## Comments` heading
+
+## When a skill says "publish to the issue tracker"
+
+Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).
+
+## When a skill says "fetch the relevant ticket"
+
+Read the file at the referenced path. The user will normally pass the path or the issue number directly.
+
+## Wayfinding operations
+
+Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
+
+- **Map**: `.scratch/<effort>/map.md` (the Notes / Decisions-so-far / Fog body).
+- **Child ticket**: `.scratch/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. A `Type:` line records the ticket type (`research`/`prototype`/`grilling`/`task`); a `Status:` line records `claimed`/`resolved`.
+- **Blocking**: a `Blocked by: NN, NN` line near the top. A ticket is unblocked when every file it lists is `resolved`.
+- **Frontier**: scan `.scratch/<effort>/issues/` for files that are open, unblocked, and unclaimed; first by number wins.
+- **Claim**: set `Status: claimed` and save before any work.
+- **Resolve**: append the answer under an `## Answer` heading, set `Status: resolved`, then append a context pointer (gist + link) to the map's Decisions-so-far in `map.md`.
+
+## Relationship to existing planning artifacts
+
+Do not duplicate what already exists:
+
+- `odd/tasks/<feature>.md` remains the **ODD feature document** (specs `S#`, tasks `T#`, logbook) for substantial implementation. A Matt Pocock ticket set that implements the same feature references it; it does not restate it.
+- `docs/ROADMAP.md` is the **sequencing** view (what lands in which release). Tickets are the **execution** view. A roadmap change updates the roadmap; it does not rewrite closed tickets.
+- `.scratch/` holds specs, tickets and grilling output only. Nothing user-facing goes there.
