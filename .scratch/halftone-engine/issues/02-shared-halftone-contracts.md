@@ -1,7 +1,7 @@
 # 02: Shared halftone contracts: profile, channel, TRC, limits, issues
 
 Type: task
-Status: ready-for-agent
+Status: ready-for-human
 Feature: halftone-engine
 Spec ticket: 1 of 12
 Spec: ../spec.md
@@ -81,3 +81,52 @@ warning integration and any physical preset.
 - Structured-context test: a diagnosis carries the offending value, the expected constraint and the
   relevant identifiers.
 - Boundary test: the existing architecture-boundary check still passes with the new modules.
+
+## Comments
+
+### Implementation (agent) — contracts layer
+
+**Status:** implemented, awaiting human review. No screening behaviour is delivered here; this is the
+typed contract layer tickets 03–08 compile against.
+
+**Files added**
+- `src/engines/halftone/contracts/issue.ts` — `IssueSeverity`, `IssueScope`, `JsonValue`,
+  `IssueContext`, `IssueDefinition`, central `ISSUE_REGISTRY`, `IssueCode`, `Issue`,
+  `isRegisteredIssueCode`, `createIssue`, `resolveOutcomeStatus`.
+- `src/engines/halftone/contracts/tonal.ts` — `NormalizedValue`, `TrcControlPoint`,
+  `TrcInterpolation`, `ToneReproductionCurve`, `ReproductionLimits`.
+- `src/engines/halftone/contracts/screening.ts` — `ScreeningMethod`, `DotShape`, `DOT_SHAPES`,
+  `AmScreeningConfiguration`, `UnsupportedScreeningConfiguration`, `ScreeningConfiguration`.
+- `src/engines/halftone/contracts/profile.ts` — `KNOWN_PROCESS_KINDS`, `ProcessKind`, `ChannelRole`,
+  `WHITE_ROLE`, `ChannelDataKind`, `InkChannel`, `ProductionProfile`.
+- `src/engines/halftone/contracts/request.ts` — `ContinuousToneInput`, `OutputSettings`,
+  `ScreeningRequest`, `OutcomeStatus`, `CompletedOutcome`/`RejectedOutcome`/`CancelledOutcome`,
+  `ScreeningOutcome`.
+- `src/engines/halftone/contracts/validation.ts` — `isFiniteNumber`, `isNormalizedValue`,
+  `validateTrcControlPoints`, `validateReproductionLimits`, `validateScreeningConfiguration`,
+  `validateChannelContract`, `validateProfileContract`.
+- `src/engines/halftone/contracts/index.ts` — barrel export.
+
+**Tests added**
+- `tests/unit/halftone/issue-contract.test.ts` (8) — registry-derived severity/scope, all severities,
+  all seven scopes, unregistered-code rejection, structured context, and fixed outcome semantics
+  (error → `rejected`, warning/info → `completed`).
+- `tests/unit/halftone/validation.test.ts` (23) — TRC strictly-increasing/unique/range/non-monotonic
+  info; limits range/order/finite; AM missing/invalid parameters and unsupported method; white as a
+  role; duplicate-angle warning; absent-limits identity warning; minimal valid request envelope.
+
+**Decisions**
+- Severity and scope live in `ISSUE_REGISTRY`; `createIssue` throws for an unregistered code, so a
+  module cannot emit a code it did not declare centrally.
+- Registry seeds only the codes the contract-level validators already emit. The full taxonomy is
+  ticket 09; this layer does not pre-empt it.
+- Non-monotonic TRC output is informational only and never rejects the run.
+- Absent limits are an explicit `channel.limits_identity` warning, not a silent default.
+- Separation, geometry, sampling, thresholding, snapshot serialisation and warning integration are
+  intentionally absent (out of scope).
+
+**Verification**
+- `npm run check` exit 0 — 97 passed, 4 skipped (integration suite skipped as before).
+- `npm run build` exit 0 — bundle 30.9 kB.
+- `tests/compatibility/architecture-boundary.test.ts` still green: no engine module references host,
+  DOM, filesystem, network or plugin storage.
