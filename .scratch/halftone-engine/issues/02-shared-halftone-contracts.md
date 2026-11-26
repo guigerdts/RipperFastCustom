@@ -90,6 +90,7 @@ warning integration and any physical preset.
 typed contract layer tickets 03–08 compile against.
 
 **Files added**
+
 - `src/engines/halftone/contracts/issue.ts` — `IssueSeverity`, `IssueScope`, `JsonValue`,
   `IssueContext`, `IssueDefinition`, central `ISSUE_REGISTRY`, `IssueCode`, `Issue`,
   `isRegisteredIssueCode`, `createIssue`, `resolveOutcomeStatus`.
@@ -108,6 +109,7 @@ typed contract layer tickets 03–08 compile against.
 - `src/engines/halftone/contracts/index.ts` — barrel export.
 
 **Tests added**
+
 - `tests/unit/halftone/issue-contract.test.ts` (8) — registry-derived severity/scope, all severities,
   all seven scopes, unregistered-code rejection, structured context, and fixed outcome semantics
   (error → `rejected`, warning/info → `completed`).
@@ -116,6 +118,7 @@ typed contract layer tickets 03–08 compile against.
   role; duplicate-angle warning; absent-limits identity warning; minimal valid request envelope.
 
 **Decisions**
+
 - Severity and scope live in `ISSUE_REGISTRY`; `createIssue` throws for an unregistered code, so a
   module cannot emit a code it did not declare centrally.
 - Registry seeds only the codes the contract-level validators already emit. The full taxonomy is
@@ -126,7 +129,38 @@ typed contract layer tickets 03–08 compile against.
   intentionally absent (out of scope).
 
 **Verification**
+
 - `npm run check` exit 0 — 97 passed, 4 skipped (integration suite skipped as before).
 - `npm run build` exit 0 — bundle 30.9 kB.
 - `tests/compatibility/architecture-boundary.test.ts` still green: no engine module references host,
   DOM, filesystem, network or plugin storage.
+
+### Corrections (independent review)
+
+Applied on top of `0feb0cf` in a separate commit; the original commit is unchanged.
+
+- **H1 — independent TRC validation.** `validateTrcControlPoints` now validates input range, output
+  range and input ordering independently. An invalid output no longer short-circuits the loop, so a
+  duplicate or disordered input after a `NaN`/`Infinity` output is still reported. Out-of-range
+  input and output are separate issues distinguished by `parameter` (`trc.points[].input` /
+  `trc.points[].output`). Tests: duplicate after `NaN` output, disordered after `Infinity` output,
+  and two independent diagnostics from one invalid point.
+- **H2 — deterministic `IssueContext` serialisation.** Added `toJsonValue` and made `createIssue`
+  normalise every context field. `NaN`, `Infinity` and `-Infinity` are preserved as `"NaN"`,
+  `"Infinity"` and `"-Infinity"` instead of collapsing to `null`. Removed the `as JsonValue` casts
+  on `unknown` AM parameters in favour of explicit normalisation. Tests: real
+  `JSON.stringify`/`JSON.parse` round-trip of non-finite context, finite context unchanged, and a
+  non-finite offending limit serialised as diagnostic text.
+- **H3 — no arbitrary process-attribute bag.** Replaced
+  `processAttributes?: Readonly<Record<string, JsonValue>>` with a typed slot
+  `ProductionProfile<TProcessAttributes = never>`. The shared base carries no attributes; a concrete
+  process profile parameterises its own attribute interface, so the extensible `processKind`
+  discriminant is preserved and validation is by type. `ScreeningRequest` and the profile validators
+  are generic over the same slot. No physical attributes were introduced. Cross-checked against spec
+  §4 (line 298), `DOMAIN-MODEL.md` R5, ADR-0005, ADR-0006 and `GLOSSARY.md`.
+- **H4 — white role coherence.** Added `channel.white_requires_mask` (error, scope `channel`):
+  a `white` role must carry `dataKind: 'mask'`. No restriction is imposed on other roles. Tests:
+  white+tone rejected, white+mask accepted, non-white mask allowed.
+
+**Verification:** `npm run check` exit 0 — 107 passed, 4 skipped; `npm run build` exit 0 — bundle
+30.9 kB; `architecture-boundary.test.ts` green.

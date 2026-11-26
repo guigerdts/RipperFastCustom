@@ -24,10 +24,14 @@ export interface OutputSettings {
   readonly dpi: number;
 }
 
-/** The single public screening request envelope. */
-export interface ScreeningRequest {
+/**
+ * The single public screening request envelope. `TProcessAttributes` mirrors the
+ * profile's typed, process-specific attribute slot so an attributed profile stays
+ * representable; the default base profile carries none.
+ */
+export interface ScreeningRequest<TProcessAttributes = never> {
   readonly input: ContinuousToneInput;
-  readonly profile: ProductionProfile;
+  readonly profile: ProductionProfile<TProcessAttributes>;
   readonly output: OutputSettings;
 }
 

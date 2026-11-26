@@ -1,7 +1,8 @@
-import { createIssue } from './issue';
-import type { Issue, JsonValue } from './issue';
+import { createIssue, toJsonValue } from './issue';
+import type { Issue } from './issue';
 import { DOT_SHAPES } from './screening';
 import type { DotShape, ScreeningConfiguration } from './screening';
+import { WHITE_ROLE } from './profile';
 import type { InkChannel, ProductionProfile } from './profile';
 import type { ReproductionLimits, TrcControlPoint } from './tonal';
 
@@ -22,33 +23,46 @@ export function isNormalizedValue(value: unknown): value is number {
  */
 export function validateTrcControlPoints(points: readonly TrcControlPoint[]): Issue[] {
   const issues: Issue[] = [];
-  let previousInput = Number.NEGATIVE_INFINITY;
+  let previousInput: number | undefined;
 
   for (const point of points) {
-    if (!isNormalizedValue(point.input) || !isNormalizedValue(point.output)) {
+    // Input range, output range and input ordering are independent diagnoses: an
+    // invalid output must never hide a duplicate or disordered input, and an
+    // invalid coordinate never suppresses another diagnostic.
+    if (!isNormalizedValue(point.input)) {
       issues.push(
-        createIssue('channel.trc_out_of_range', 'TRC control point outside [0, 1]', {
-          offendingValue: { input: point.input, output: point.output },
-          expected: 'input and output in [0, 1]',
-          parameter: 'trc.points',
+        createIssue('channel.trc_out_of_range', 'TRC control-point input outside [0, 1]', {
+          offendingValue: { input: point.input },
+          expected: 'input in [0, 1]',
+          parameter: 'trc.points[].input',
         }),
       );
-      continue;
     }
-    if (point.input <= previousInput) {
+    if (!isNormalizedValue(point.output)) {
       issues.push(
-        createIssue(
-          'channel.trc_ambiguous',
-          'TRC control-point inputs must be strictly increasing',
-          {
-            offendingValue: point.input,
-            expected: 'strictly increasing, unique inputs',
-            parameter: 'trc.points',
-          },
-        ),
+        createIssue('channel.trc_out_of_range', 'TRC control-point output outside [0, 1]', {
+          offendingValue: { output: point.output },
+          expected: 'output in [0, 1]',
+          parameter: 'trc.points[].output',
+        }),
       );
     }
-    previousInput = point.input;
+    if (isFiniteNumber(point.input)) {
+      if (previousInput !== undefined && point.input <= previousInput) {
+        issues.push(
+          createIssue(
+            'channel.trc_ambiguous',
+            'TRC control-point inputs must be strictly increasing',
+            {
+              offendingValue: point.input,
+              expected: 'strictly increasing, unique inputs',
+              parameter: 'trc.points[].input',
+            },
+          ),
+        );
+      }
+      previousInput = point.input;
+    }
   }
 
   if (hasNonMonotonicOutput(points)) {
@@ -128,7 +142,7 @@ function validateAmScreening(config: ScreeningConfiguration): Issue[] {
   } else if (!isFiniteNumber(raw.frequency) || raw.frequency <= 0) {
     issues.push(
       createIssue('profile.invalid_am_parameter', 'AM frequency must be finite and positive', {
-        offendingValue: raw.frequency as JsonValue,
+        offendingValue: toJsonValue(raw.frequency),
         expected: 'finite LPI > 0',
         parameter: 'frequency',
       }),
@@ -145,7 +159,7 @@ function validateAmScreening(config: ScreeningConfiguration): Issue[] {
   } else if (!isFiniteNumber(raw.angle)) {
     issues.push(
       createIssue('profile.invalid_am_parameter', 'AM angle must be finite', {
-        offendingValue: raw.angle as JsonValue,
+        offendingValue: toJsonValue(raw.angle),
         expected: 'finite degrees',
         parameter: 'angle',
       }),
@@ -162,7 +176,7 @@ function validateAmScreening(config: ScreeningConfiguration): Issue[] {
   } else if (!isDotShape(raw.dotShape)) {
     issues.push(
       createIssue('profile.invalid_am_parameter', 'Unknown dot shape', {
-        offendingValue: raw.dotShape as JsonValue,
+        offendingValue: toJsonValue(raw.dotShape),
         expected: DOT_SHAPES.join(', '),
         parameter: 'dotShape',
       }),
@@ -179,6 +193,19 @@ function isDotShape(value: unknown): value is DotShape {
 /** Validates one channel's screening, TRC and limits, recording absent limits as identity. */
 export function validateChannelContract(channel: InkChannel): Issue[] {
   const issues: Issue[] = [...validateScreeningConfiguration(channel.screening)];
+
+  // The white role is the DTF white-ink mask: it must carry mask data. No other
+  // role is constrained here, because the model allows mask channels generally.
+  if (channel.role === WHITE_ROLE && channel.dataKind !== 'mask') {
+    issues.push(
+      createIssue('channel.white_requires_mask', 'The white role must be a mask channel', {
+        offendingValue: { role: channel.role, dataKind: channel.dataKind },
+        expected: 'dataKind "mask" for role "white"',
+        channel: channel.id,
+        parameter: 'dataKind',
+      }),
+    );
+  }
 
   if (channel.trc !== undefined) {
     issues.push(...validateTrcControlPoints(channel.trc.points));
@@ -204,7 +231,9 @@ export function validateChannelContract(channel: InkChannel): Issue[] {
 }
 
 /** Validates every channel of a profile and warns on duplicate screen angles. */
-export function validateProfileContract(profile: ProductionProfile): Issue[] {
+export function validateProfileContract<TProcessAttributes>(
+  profile: ProductionProfile<TProcessAttributes>,
+): Issue[] {
   const issues: Issue[] = [];
 
   for (const channel of profile.channels) {
@@ -225,7 +254,9 @@ export function validateProfileContract(profile: ProductionProfile): Issue[] {
   return issues;
 }
 
-function findDuplicateAngles(profile: ProductionProfile): number[] {
+function findDuplicateAngles<TProcessAttributes>(
+  profile: ProductionProfile<TProcessAttributes>,
+): number[] {
   const seen = new Set<number>();
   const duplicates = new Set<number>();
   for (const channel of profile.channels) {

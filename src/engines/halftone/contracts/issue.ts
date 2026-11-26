@@ -57,6 +57,7 @@ export const ISSUE_REGISTRY = {
   'channel.trc_non_monotonic': { severity: 'info', scope: 'channel' },
   'channel.limits_invalid': { severity: 'error', scope: 'channel' },
   'channel.limits_identity': { severity: 'warning', scope: 'channel' },
+  'channel.white_requires_mask': { severity: 'error', scope: 'channel' },
 } as const satisfies Record<string, IssueDefinition>;
 
 export type IssueCode = keyof typeof ISSUE_REGISTRY;
@@ -75,15 +76,72 @@ export function isRegisteredIssueCode(code: string): code is IssueCode {
 }
 
 /**
+ * Converts any value into a JSON-safe value deterministically. Non-finite
+ * numbers (`NaN`, `Infinity`, `-Infinity`) cannot survive JSON encoding as
+ * numbers, so they are preserved as diagnostic text instead of collapsing to
+ * `null`. Objects and arrays are normalised recursively.
+ */
+export function toJsonValue(value: unknown): JsonValue {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
+  if (typeof value === 'bigint') return value.toString();
+  if (typeof value === 'function' || typeof value === 'symbol') return String(value);
+  if (Array.isArray(value)) return value.map((entry) => toJsonValue(entry));
+
+  const record: { [key: string]: JsonValue } = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    record[key] = toJsonValue(entry);
+  }
+  return record;
+}
+
+/** Normalises every context field through {@link toJsonValue}. */
+function normalizeIssueContext(context: IssueContext): IssueContext {
+  const normalized: {
+    offendingValue?: JsonValue;
+    expected?: string;
+    channel?: string;
+    parameter?: string;
+    profileField?: string;
+    details?: Readonly<Record<string, JsonValue>>;
+  } = {};
+
+  if (context.offendingValue !== undefined) {
+    normalized.offendingValue = toJsonValue(context.offendingValue);
+  }
+  if (context.expected !== undefined) normalized.expected = context.expected;
+  if (context.channel !== undefined) normalized.channel = context.channel;
+  if (context.parameter !== undefined) normalized.parameter = context.parameter;
+  if (context.profileField !== undefined) normalized.profileField = context.profileField;
+  if (context.details !== undefined) {
+    const details: { [key: string]: JsonValue } = {};
+    for (const [key, entry] of Object.entries(context.details)) {
+      details[key] = toJsonValue(entry);
+    }
+    normalized.details = details;
+  }
+
+  return normalized;
+}
+
+/**
  * Builds an issue from the registry. Throws when the code is not registered:
- * a module cannot emit a code it did not declare centrally.
+ * a module cannot emit a code it did not declare centrally. The structured
+ * context is normalised so the issue is always JSON-serialisable without loss.
  */
 export function createIssue(code: IssueCode, message: string, context: IssueContext = {}): Issue {
   const definition = (ISSUE_REGISTRY as Record<string, IssueDefinition | undefined>)[code];
   if (definition === undefined) {
     throw new Error(`Unregistered issue code: ${String(code)}`);
   }
-  return { code, severity: definition.severity, scope: definition.scope, message, context };
+  return {
+    code,
+    severity: definition.severity,
+    scope: definition.scope,
+    message,
+    context: normalizeIssueContext(context),
+  };
 }
 
 /**

@@ -1,4 +1,3 @@
-import type { JsonValue } from './issue';
 import type { ScreeningConfiguration } from './screening';
 import type { ReproductionLimits, ToneReproductionCurve } from './tonal';
 
@@ -27,15 +26,20 @@ export interface InkChannel {
 
 /**
  * The named, versioned set of process conditions that owns concrete values.
- * The engine treats process attributes as opaque; it only validates declared
- * constraints.
+ *
+ * `processKind` is an open, extensible discriminant. Process-specific attributes
+ * are not a free-form property bag on the shared contract: a concrete process
+ * profile parameterises `TProcessAttributes` with its own typed interface (for
+ * example a future `DtfAttributes`), and the engine treats that payload as
+ * opaque except for declared constraints. The shared base defaults the slot to
+ * `never`, so it cannot carry unspecified attributes.
  */
-export interface ProductionProfile {
+export interface ProductionProfile<TProcessAttributes = never> {
   readonly id: string;
   readonly version: string;
   readonly processKind: ProcessKind;
   readonly channels: readonly InkChannel[];
-  readonly processAttributes?: Readonly<Record<string, JsonValue>>;
   readonly allowedOutputResolutions?: readonly number[];
   readonly minimumCellPixels?: number;
+  readonly processAttributes?: TProcessAttributes;
 }

@@ -61,6 +61,25 @@ describe('issue contract', () => {
     expect(issue.context.profileField).toBe('channels[0].screening');
   });
 
+  it('normalises non-finite numbers so the issue survives JSON round-trip', () => {
+    const issue = createIssue('channel.trc_out_of_range', 'x', {
+      offendingValue: { input: Number.NaN, output: Number.POSITIVE_INFINITY },
+      details: { low: Number.NEGATIVE_INFINITY, finite: 0.25 },
+    });
+    const roundTrip = JSON.parse(JSON.stringify(issue)) as typeof issue;
+    expect(roundTrip.context.offendingValue).toEqual({ input: 'NaN', output: 'Infinity' });
+    expect(roundTrip.context.details).toEqual({ low: '-Infinity', finite: 0.25 });
+  });
+
+  it('round-trips a finite structured context unchanged', () => {
+    const issue = createIssue('channel.limits_invalid', 'x', {
+      offendingValue: { a_wf: 0.9, a_vf: 0.1 },
+      expected: 'a_wf < a_vf',
+    });
+    const roundTrip = JSON.parse(JSON.stringify(issue)) as typeof issue;
+    expect(roundTrip.context).toEqual(issue.context);
+  });
+
   it('treats an error as rejected, a warning as completed and info as diagnostic', () => {
     expect(resolveOutcomeStatus([{ severity: 'error' }])).toBe('rejected');
     expect(resolveOutcomeStatus([{ severity: 'warning' }])).toBe('completed');

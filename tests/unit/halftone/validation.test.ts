@@ -85,6 +85,36 @@ describe('TRC control-point validation', () => {
     expect(info?.severity).toBe('info');
     expect(resolveOutcomeStatus(issues)).toBe('completed');
   });
+
+  it('still detects a duplicate input that follows a point with an invalid output', () => {
+    const issues = validateTrcControlPoints([
+      { input: 0.5, output: Number.NaN },
+      { input: 0.5, output: 0.8 },
+    ]);
+    const codes = issues.map((issue) => issue.code);
+    expect(codes).toContain('channel.trc_out_of_range');
+    expect(codes).toContain('channel.trc_ambiguous');
+  });
+
+  it('still detects a disordered input that follows a point with an infinite output', () => {
+    const issues = validateTrcControlPoints([
+      { input: 0.6, output: Number.POSITIVE_INFINITY },
+      { input: 0.4, output: 0.8 },
+    ]);
+    const codes = issues.map((issue) => issue.code);
+    expect(codes).toContain('channel.trc_out_of_range');
+    expect(codes).toContain('channel.trc_ambiguous');
+  });
+
+  it('reports an invalid input and an invalid output as independent diagnostics', () => {
+    const issues = validateTrcControlPoints([{ input: Number.NaN, output: 5 }]);
+    const outOfRange = issues.filter((issue) => issue.code === 'channel.trc_out_of_range');
+    expect(outOfRange).toHaveLength(2);
+    expect(outOfRange.map((issue) => issue.context.parameter)).toEqual([
+      'trc.points[].input',
+      'trc.points[].output',
+    ]);
+  });
 });
 
 describe('reproduction-limit validation', () => {
@@ -105,6 +135,14 @@ describe('reproduction-limit validation', () => {
   it('rejects inverted limits where a_wf >= a_vf', () => {
     expect(validateReproductionLimits({ a_wf: 0.6, a_vf: 0.4 })).not.toEqual([]);
     expect(validateReproductionLimits({ a_wf: 0.5, a_vf: 0.5 })).not.toEqual([]);
+  });
+
+  it('serialises a non-finite offending limit as diagnostic text, not as a raw number', () => {
+    const [issue] = validateReproductionLimits({ a_wf: Number.NaN, a_vf: 0.9 });
+    expect(issue).toBeDefined();
+    if (issue === undefined) return;
+    const roundTrip = JSON.parse(JSON.stringify(issue)) as typeof issue;
+    expect(roundTrip.context.offendingValue).toEqual({ a_wf: 'NaN', a_vf: 0.9 });
   });
 });
 
@@ -210,6 +248,44 @@ describe('profile contract validation', () => {
     const invalid = channel({ limits: { a_wf: 0.9, a_vf: 0.1 } });
     const issues = validateProfileContract(profileOf(invalid));
     expect(resolveOutcomeStatus(issues)).toBe('rejected');
+  });
+
+  it('rejects a white channel that is not a mask', () => {
+    const issues = validateProfileContract(
+      profileOf(channel({ id: 'white', role: 'white', dataKind: 'tone' })),
+    );
+    const white = issues.find((issue) => issue.code === 'channel.white_requires_mask');
+    expect(white?.severity).toBe('error');
+    expect(resolveOutcomeStatus(issues)).toBe('rejected');
+  });
+
+  it('accepts a white channel that is a mask', () => {
+    const issues = validateProfileContract(
+      profileOf(channel({ id: 'white', role: 'white', dataKind: 'mask' })),
+    );
+    expect(issues.map((issue) => issue.code)).not.toContain('channel.white_requires_mask');
+  });
+
+  it('does not impose the white mask rule on other roles', () => {
+    const issues = validateProfileContract(
+      profileOf(channel({ id: 'spot', role: 'spot-orange', dataKind: 'mask' })),
+    );
+    expect(issues.map((issue) => issue.code)).not.toContain('channel.white_requires_mask');
+  });
+
+  it('carries typed process attributes without an untyped property bag', () => {
+    interface CustomAttributes {
+      readonly note: string;
+    }
+    const profile: ProductionProfile<CustomAttributes> = {
+      id: 'custom-profile',
+      version: '1.0.0',
+      processKind: 'custom-process',
+      channels: [channel()],
+      processAttributes: { note: 'caller-owned' },
+    };
+    expect(validateProfileContract(profile)).toEqual([]);
+    expect(JSON.parse(JSON.stringify(profile.processAttributes))).toEqual({ note: 'caller-owned' });
   });
 });
 
