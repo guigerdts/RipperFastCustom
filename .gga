@@ -1,0 +1,35 @@
+# Gentleman Guardian Angel Configuration
+# Project config for RipperFastCustom.
+# Global config lives at ~/.config/gga/config; this file overrides it per repo.
+
+# AI Provider (required)
+# Options include: claude, gemini, codex, opencode, cursor[:model], kilo[:model],
+# kiro, ollama:<model>, lmstudio[:model], github:<model>, minimax[:model]
+PROVIDER="opencode"
+
+# File patterns to include in review (comma-separated). "*" reviews every staged
+# file: source, tests, contracts and domain documentation are all in scope.
+FILE_PATTERNS="*"
+
+# File patterns to exclude from review (comma-separated).
+# Only build/test artifacts and lockfiles are excluded. No source, test, contract
+# or domain documentation is excluded.
+EXCLUDE_PATTERNS="dist/*,build/*,coverage/*,node_modules/*,package-lock.json"
+
+# File containing code review rules
+RULES_FILE="AGENTS.md"
+
+# Strict mode: fail if AI response is ambiguous
+STRICT_MODE="true"
+
+# Timeout in seconds for AI provider response
+TIMEOUT="300"
+
+# OpenCode provider: optional reasoning effort / variant
+# OPENCODE_VARIANT="high"
+
+# OpenCode provider: optional agent profile
+# OPENCODE_AGENT="gga-reviewer"
+
+# Base branch for --pr-mode (auto-detects main/master/develop if empty)
+# PR_BASE_BRANCH="master"
