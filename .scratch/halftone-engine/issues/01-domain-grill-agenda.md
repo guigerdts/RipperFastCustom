@@ -99,3 +99,30 @@ vocabulary this session fixes.
   `docs/agents/domain.md`), not for definitions.
 
 ## Comments
+
+### 2026-11-26 — Round 1 closed
+
+Seven decisions recorded. `GLOSSARY.md` created with the domain vocabulary, and four ADRs:
+0001 continuous-tone input only, 0002 geometric halftone cell, 0003 screen angles in production
+profiles, 0004 TRC compensation in v1. Hybrid screening, mesh-to-LPI rules, concrete CMYK angles
+and DTF behaviour remain unverified and are listed under "Verification status" in the glossary.
+Round 2 pending.
+
+### 2026-11-26 — Round 2 closed
+
+Seven more decisions recorded: AM and FM first-class with hybrid out of scope; ink channel as the
+canonical concept; highlight and shadow critical areas as profile-owned limits; rosette and moiré
+kept distinct; mesh count as a profile constraint without mesh simulation; no universal tonal
+level formula; DTF as an independent process. Added ADR-0005 (generic ink channels), ADR-0006
+(DTF independent) and ADR-0007 (tonal levels not from cell pixels). Hybrid, spot screening,
+mesh-to-LPI and CMYK angle values remain unverified. Round 3 pending.
+
+### 2026-11-26 — Round 3 closed
+
+Conceptual model accepted: separation as a transformation, screening configuration as a
+method-dependent binding, dot as derived, output result with an immutable profile snapshot, four
+explicit tonal stages, white as an ink channel with mask data, process as an extensible profile
+attribute, and invariants I1–I9 with method-scoped caveats. Added `docs/DOMAIN-MODEL.md`,
+ADR-0008 (immutable snapshot), ADR-0009 (method-dependent screening configuration) and ADR-0010
+(four tonal stages). Domain remains incomplete: hybrid, spot screening, mesh-to-LPI, CMYK angles
+and DTF physical parameters are open. Next: scoped `to-spec` for the AM core.
