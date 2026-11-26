@@ -66,6 +66,7 @@ export const ISSUE_REGISTRY = {
   'channel.trc_non_monotonic': { severity: 'info', scope: 'channel' },
   'channel.limits_invalid': { severity: 'error', scope: 'channel' },
   'channel.limits_identity': { severity: 'warning', scope: 'channel' },
+  'channel.tonal_input_invalid': { severity: 'error', scope: 'channel' },
   'channel.white_requires_mask': { severity: 'error', scope: 'channel' },
   'separation.invalid_input': { severity: 'error', scope: 'separation' },
   'separation.undeclared_mapping': { severity: 'error', scope: 'separation' },
