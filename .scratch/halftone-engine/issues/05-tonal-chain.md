@@ -1,7 +1,7 @@
 # 05: Tonal chain: TRC, reproduction limits and four-stage trace
 
 Type: task
-Status: ready-for-agent
+Status: done
 Feature: halftone-engine
 Spec ticket: 4 of 12
 Spec: ../spec.md
@@ -112,3 +112,10 @@ validators: `validateTrcControlPoints` (`channel.trc_ambiguous` / `channel.trc_o
   - SUGGESTION 6 — added tests for endpoint clamp outside the control-point domain, out-of-range/non-integer trace index skipping, and limits applied after a non-identity TRC.
   - Deferred (documented, out of ticket 05 scope): region `stride` validation returns an empty trace by design (ticket documents "positive stride"); `trc.interpolation` validation belongs to the shared vocabulary owner (ticket 02/09); an empty channel list is accepted (separation does not produce one). The `span <= 0` branch is retained as harmless defence-in-depth.
 - Re-verification after corrections: focused suite 29 tests pass; `npm run check` exit 0 (234 passed, 4 skipped); build 30.9 kB; `git diff --check` clean.
+
+## Integration
+
+- **Commit:** `47b8eb7 feat(halftone): implement tonal chain with TRC, limits and four-stage trace` (5 files, +1066/-9).
+- **GGA:** PASSED before commit (`STATUS: PASSED`), and the pre-commit hook passed from cache (5 files).
+- **Remote:** pushed `b3e4d4c..47b8eb7 master -> master` (no force). `master` is unprotected, no CI workflow and no PR required, so the direct push is the established integration path for this repo.
+- **Final state at integration:** `HEAD == origin/master == 47b8eb7`, ahead 0.
