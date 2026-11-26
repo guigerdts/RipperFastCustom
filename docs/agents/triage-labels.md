@@ -14,6 +14,19 @@ When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the 
 
 Edit the "Label in our tracker" column to match whatever vocabulary you actually use.
 
+## Terminal state
+
+The five roles above describe triage: where an issue sits before or while work happens. A
+completed ticket needs one terminal value, which has no upstream role equivalent:
+
+| Value  | Meaning                                                            |
+| ------ | ------------------------------------------------------------------ |
+| `done` | Implementation integrated and verified; no further action expected |
+
+`done` is set only after the change is confirmed integrated in the target branch. It is
+terminal: a ticket does not move back out of `done` without a new ticket or a reopening
+comment that explains why the earlier verification was wrong.
+
 ## How labels are stored locally
 
 Statuses and labels are managed as Markdown (see `issue-tracker.md`). They do not depend on
