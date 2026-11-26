@@ -1,7 +1,7 @@
 # 02: Shared halftone contracts: profile, channel, TRC, limits, issues
 
 Type: task
-Status: ready-for-human
+Status: done
 Feature: halftone-engine
 Spec ticket: 1 of 12
 Spec: ../spec.md
@@ -48,24 +48,24 @@ warning integration and any physical preset.
 
 **Acceptance criteria:**
 
-- [ ] A minimal valid request is representable with profile, channel, TRC, limits and issue
+- [x] A minimal valid request is representable with profile, channel, TRC, limits and issue
       structures, with no `any` in public contracts.
-- [ ] The process kind is an extensible discriminant; AM is one method; a missing required AM
+- [x] The process kind is an extensible discriminant; AM is one method; a missing required AM
       parameter is representable as an issue, never as a default.
-- [ ] Channel role and data kind distinguish `tone` from `mask`, and `white` is a role rather than a
+- [x] Channel role and data kind distinguish `tone` from `mask`, and `white` is a role rather than a
       special case.
-- [ ] TRC control-point inputs must be strictly increasing and unique; limits require finite
+- [x] TRC control-point inputs must be strictly increasing and unique; limits require finite
       `[0, 1]` values with `a_wf < a_vf`.
-- [ ] Every issue carries a stable code, a severity in `error | warning | info`, a scope and a
+- [x] Every issue carries a stable code, a severity in `error | warning | info`, a scope and a
       structured context.
-- [ ] The issue contract defines stable code, severity, scope, structured context and consistent
+- [x] The issue contract defines stable code, severity, scope, structured context and consistent
       semantics; no module-local code is representable.
-- [ ] Error, warning and info semantics are fixed: an error rejects, a warning allows `completed`,
+- [x] Error, warning and info semantics are fixed: an error rejects, a warning allows `completed`,
       and info is diagnostic.
-- [ ] Codes are registered centrally; an unregistered code cannot be emitted.
-- [ ] Tickets 03–08 can consume the contract without redefining it.
-- [ ] No engine module references the host, DOM, filesystem, network or plugin storage.
-- [ ] `npm run check` exits 0.
+- [x] Codes are registered centrally; an unregistered code cannot be emitted.
+- [x] Tickets 03–08 can consume the contract without redefining it.
+- [x] No engine module references the host, DOM, filesystem, network or plugin storage.
+- [x] `npm run check` exits 0.
 
 **Tests:**
 
@@ -164,3 +164,17 @@ Applied on top of `0feb0cf` in a separate commit; the original commit is unchang
 
 **Verification:** `npm run check` exit 0 — 107 passed, 4 skipped; `npm run build` exit 0 — bundle
 30.9 kB; `architecture-boundary.test.ts` green.
+
+### Human approval (2026-11-26)
+
+Final technical review accepted: 11/11 acceptance criteria PASS, no blocking defects.
+
+Integration verified before closing:
+
+- `0feb0cf` (shared contract layer) and `cc6237b` (validation corrections) are ancestors of
+  `origin/master` (`git merge-base --is-ancestor`).
+- `origin/master` is `1a1c405`; the two later commits (`470e7f0`, `8ca89a3`) are local
+  documentation commits and were not pushed.
+- `gh pr list --state all` returns no open or pending pull request; no additional merge is needed.
+
+Ticket 02 is `done`. The approved implementation was not modified.
