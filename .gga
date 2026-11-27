@@ -5,7 +5,10 @@
 # AI Provider (required)
 # Options include: claude, gemini, codex, opencode, cursor[:model], kilo[:model],
 # kiro, ollama:<model>, lmstudio[:model], github:<model>, minimax[:model]
-PROVIDER="opencode"
+PROVIDER="opencode:google/gemini-3.5-flash-lite"
+# Bare "opencode" inherits the global default model, which here resolves to a free
+# tier that stalls and returns empty responses. Pin a model that answers reliably
+# so STRICT_MODE rejects real findings instead of transport noise.
 
 # File patterns to include in review (comma-separated). "*" reviews every staged
 # file: source, tests, contracts and domain documentation are all in scope.
@@ -14,7 +17,7 @@ FILE_PATTERNS="*"
 # File patterns to exclude from review (comma-separated).
 # Only build/test artifacts and lockfiles are excluded. No source, test, contract
 # or domain documentation is excluded.
-EXCLUDE_PATTERNS="dist/*,build/*,coverage/*,node_modules/*,package-lock.json"
+EXCLUDE_PATTERNS="dist/*,build/*,coverage/*,node_modules/*,package-lock.json,.codegraph/*"
 
 # File containing code review rules
 RULES_FILE="AGENTS.md"

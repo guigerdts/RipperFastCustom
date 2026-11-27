@@ -20,6 +20,29 @@ Hard rules enforced by tests, not by goodwill:
 - Run `gga run` as the mandatory quality gate before committing. Never disable, skip or
   bypass the pre-commit hook.
 
+## Memory (Engram)
+
+The project key is `ripperfastcustom`, resolved from the repository directory name and
+not from the `origin` remote. Renaming the directory splits memory into a new project.
+
+- Search memory before work that may have prior context: `mem_search` / `mem_context`
+  scoped to `ripperfastcustom`.
+- Persist durable decisions, gotchas and completed fixes with `mem_save`.
+- Call `mem_session_summary` before closing a working session.
+- If an Engram write fails with an unbound session, continue the work and record the
+  missing write in the final report. Never claim an observation was persisted when it
+  was not.
+
+## Workflow (ODD)
+
+Every request runs Organic Driven Development: authorize, explore, resolve uncertainty,
+classify, then implement task by task and close with evidence.
+
+- Small, fully-understood work stays inline and creates no task artifacts.
+- Large work is tracked in `.scratch/<feature>/`, which is the canonical specification.
+- Each ticket closes only after `npm run check` exits 0, `npm run build` is clean, GGA
+  passes through the pre-commit hook, and the commit is verified on `origin/master`.
+
 ## Agent skills
 
 ### Issue tracker
