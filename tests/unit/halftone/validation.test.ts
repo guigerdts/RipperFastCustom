@@ -240,8 +240,9 @@ describe('profile contract validation', () => {
       }),
     );
     const issues = validateProfileContract(profile);
-    const duplicate = issues.find((issue) => issue.code === 'profile.duplicate_channel_angles');
+    const duplicate = issues.find((issue) => issue.code === 'geometry.duplicate_angle');
     expect(duplicate?.severity).toBe('warning');
+    expect(duplicate?.scope).toBe('geometry');
   });
 
   it('rejects the run when any channel has a contract error', () => {

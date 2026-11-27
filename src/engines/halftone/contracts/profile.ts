@@ -49,5 +49,11 @@ export interface ProductionProfile<TProcessAttributes = never> {
   readonly separation?: SeparationDeclaration;
   readonly allowedOutputResolutions?: readonly number[];
   readonly minimumCellPixels?: number;
+  /**
+   * Minimum input samples per screen line (`input PPI / LPI`) the profile
+   * declares as adequate. When present, falling below it emits
+   * `input.low_resolution`; when absent, no input-sampling warning is emitted.
+   */
+  readonly minimumInputSamplesPerScreenLine?: number;
   readonly processAttributes?: TProcessAttributes;
 }

@@ -10,8 +10,17 @@
 
 export type IssueSeverity = 'error' | 'warning' | 'info';
 
-export type IssueScope =
-  'input' | 'profile' | 'channel' | 'geometry' | 'separation' | 'output' | 'preview';
+export const ISSUE_SCOPES = [
+  'input',
+  'profile',
+  'channel',
+  'separation',
+  'geometry',
+  'output',
+  'preview',
+] as const;
+
+export type IssueScope = (typeof ISSUE_SCOPES)[number];
 
 /** A JSON-serialisable value carried as structured diagnostic context. */
 export type JsonValue =
@@ -54,13 +63,15 @@ export const ISSUE_REGISTRY = {
   'input.unsupported_bit_depth': { severity: 'error', scope: 'input' },
   'input.unsupported_layout': { severity: 'error', scope: 'input' },
   'input.data_size_mismatch': { severity: 'error', scope: 'input' },
+  'input.low_resolution': { severity: 'warning', scope: 'input' },
   'input.prepared_artwork': { severity: 'error', scope: 'input' },
   'input.prepared_artwork_override': { severity: 'warning', scope: 'input' },
   'input.prepared_artwork_override_reason_missing': { severity: 'error', scope: 'input' },
   'profile.missing_am_parameter': { severity: 'error', scope: 'profile' },
   'profile.invalid_am_parameter': { severity: 'error', scope: 'profile' },
   'profile.unsupported_method': { severity: 'error', scope: 'profile' },
-  'profile.duplicate_channel_angles': { severity: 'warning', scope: 'profile' },
+  'profile.invalid_constraint': { severity: 'error', scope: 'profile' },
+  'profile.mesh_unvalidated': { severity: 'warning', scope: 'profile' },
   'channel.trc_ambiguous': { severity: 'error', scope: 'channel' },
   'channel.trc_out_of_range': { severity: 'error', scope: 'channel' },
   'channel.trc_non_monotonic': { severity: 'info', scope: 'channel' },
@@ -82,8 +93,15 @@ export const ISSUE_REGISTRY = {
   'geometry.invalid_input': { severity: 'error', scope: 'geometry' },
   'geometry.empty_canvas': { severity: 'error', scope: 'geometry' },
   'geometry.unknown_dot_shape': { severity: 'error', scope: 'geometry' },
+  'geometry.duplicate_angle': { severity: 'warning', scope: 'geometry' },
+  'geometry.insufficient_addressability': { severity: 'warning', scope: 'geometry' },
+  // Reserved vocabulary: emitted by the trace API and the preview mode once
+  // those paths exist (preview is ticket 10; the trace API is not built yet).
+  'geometry.clipped_trace': { severity: 'warning', scope: 'geometry' },
   'output.invalid_dimension': { severity: 'error', scope: 'output' },
+  'output.unsupported_resolution': { severity: 'error', scope: 'output' },
   'output.snapshot_invalid': { severity: 'error', scope: 'output' },
+  'preview.requested': { severity: 'info', scope: 'preview' },
 } as const satisfies Record<string, IssueDefinition>;
 
 export type IssueCode = keyof typeof ISSUE_REGISTRY;
@@ -178,4 +196,91 @@ export function resolveOutcomeStatus(
   issues: readonly Pick<Issue, 'severity'>[],
 ): 'rejected' | 'completed' {
   return issues.some((issue) => issue.severity === 'error') ? 'rejected' : 'completed';
+}
+
+/**
+ * Canonical JSON for a context record: object keys are sorted so two
+ * contextually equal issues always produce the same identity string, whatever
+ * order their producer built the fields in.
+ */
+function canonicalContext(value: JsonValue): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalContext(entry)).join(',')}]`;
+  }
+  const record = value as { readonly [key: string]: JsonValue };
+  const entries = Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalContext(record[key] as JsonValue)}`);
+  return `{${entries.join(',')}}`;
+}
+
+/**
+ * Stable identity of an issue for deduplication. Two issues with the same code,
+ * scope, message and structured context describe the same condition, whichever
+ * stage produced them; the severity is derived from the code so it cannot
+ * differ.
+ */
+export function issueIdentity(
+  issue: Pick<Issue, 'code' | 'scope' | 'message' | 'context'>,
+): string {
+  return [
+    issue.code,
+    issue.scope,
+    issue.message,
+    canonicalContext(issue.context as JsonValue),
+  ].join('\u0000');
+}
+
+/**
+ * Drops exact duplicate issues, keeping the first occurrence. The pipeline can
+ * observe the same condition in more than one stage (a missing reproduction
+ * limit is visible to both the profile contract and the tonal chain); the
+ * envelope must report it once.
+ */
+export function dedupeIssues(issues: readonly Issue[]): Issue[] {
+  const seen = new Set<string>();
+  const unique: Issue[] = [];
+  for (const issue of issues) {
+    const identity = issueIdentity(issue);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    unique.push(issue);
+  }
+  return unique;
+}
+
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+/**
+ * Deterministic issue order: by pipeline stage, then code, then channel, then
+ * message, then context. The order never depends on the order in which stages
+ * happened to push their diagnostics.
+ */
+export function sortIssues(issues: readonly Issue[]): Issue[] {
+  const rank = new Map<IssueScope, number>(ISSUE_SCOPES.map((scope, index) => [scope, index]));
+  return [...issues].sort((left, right) => {
+    const scopeRank =
+      (rank.get(left.scope) ?? ISSUE_SCOPES.length) -
+      (rank.get(right.scope) ?? ISSUE_SCOPES.length);
+    if (scopeRank !== 0) return scopeRank;
+    return (
+      compareText(left.code, right.code) ||
+      compareText(left.context.channel ?? '', right.context.channel ?? '') ||
+      compareText(left.message, right.message) ||
+      compareText(
+        canonicalContext(left.context as JsonValue),
+        canonicalContext(right.context as JsonValue),
+      )
+    );
+  });
+}
+
+/** Deduplicates then orders an issue list for a result envelope. */
+export function finalizeIssues(issues: readonly Issue[]): Issue[] {
+  return sortIssues(dedupeIssues(issues));
 }
