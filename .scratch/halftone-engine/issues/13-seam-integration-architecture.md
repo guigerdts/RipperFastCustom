@@ -1,7 +1,7 @@
 # 13: Engine seam integration tests and architecture-boundary extension
 
 Type: task
-Status: ready-for-agent
+Status: done
 Feature: halftone-engine
 Spec ticket: 12 of 12
 Spec: ../spec.md
