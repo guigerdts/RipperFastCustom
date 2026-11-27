@@ -80,6 +80,7 @@ export const ISSUE_REGISTRY = {
   'separation.mask_source_invalid': { severity: 'error', scope: 'separation' },
   'geometry.invalid_input': { severity: 'error', scope: 'geometry' },
   'geometry.empty_canvas': { severity: 'error', scope: 'geometry' },
+  'geometry.unknown_dot_shape': { severity: 'error', scope: 'geometry' },
 } as const satisfies Record<string, IssueDefinition>;
 
 export type IssueCode = keyof typeof ISSUE_REGISTRY;
