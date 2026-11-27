@@ -85,10 +85,9 @@ function codes(issues: readonly { readonly code: string }[]): string[] {
   return issues.map((issue) => issue.code);
 }
 
-// One entry per taxonomy code this ticket owns or verifies; every code the
-// emission tests below exercise appears here. Preview and the trace warning are
-// reserved vocabulary whose emission belongs to the preview mode and the trace
-// API.
+// One entry per taxonomy code this feature owns or verifies; every code the
+// emission tests below exercise appears here. The trace warning remains
+// reserved vocabulary whose emission belongs to the trace API.
 const TAXONOMY_TABLE = [
   ['input.low_resolution', 'warning', 'input'],
   ['input.prepared_artwork_override', 'warning', 'input'],
@@ -103,6 +102,7 @@ const TAXONOMY_TABLE = [
   ['geometry.clipped_trace', 'warning', 'geometry'],
   ['output.unsupported_resolution', 'error', 'output'],
   ['preview.requested', 'info', 'preview'],
+  ['preview.invalid_settings', 'error', 'preview'],
 ] as const;
 
 describe('taxonomy registry', () => {

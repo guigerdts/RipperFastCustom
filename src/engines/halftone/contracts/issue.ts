@@ -95,13 +95,13 @@ export const ISSUE_REGISTRY = {
   'geometry.unknown_dot_shape': { severity: 'error', scope: 'geometry' },
   'geometry.duplicate_angle': { severity: 'warning', scope: 'geometry' },
   'geometry.insufficient_addressability': { severity: 'warning', scope: 'geometry' },
-  // Reserved vocabulary: emitted by the trace API and the preview mode once
-  // those paths exist (preview is ticket 10; the trace API is not built yet).
+  // Reserved vocabulary: emitted by the trace API once it exists.
   'geometry.clipped_trace': { severity: 'warning', scope: 'geometry' },
   'output.invalid_dimension': { severity: 'error', scope: 'output' },
   'output.unsupported_resolution': { severity: 'error', scope: 'output' },
   'output.snapshot_invalid': { severity: 'error', scope: 'output' },
   'preview.requested': { severity: 'info', scope: 'preview' },
+  'preview.invalid_settings': { severity: 'error', scope: 'preview' },
 } as const satisfies Record<string, IssueDefinition>;
 
 export type IssueCode = keyof typeof ISSUE_REGISTRY;

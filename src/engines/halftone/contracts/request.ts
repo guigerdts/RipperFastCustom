@@ -39,14 +39,33 @@ export interface OutputSettings {
 }
 
 /**
+ * Explicit preview request. Preview is a mode of the same pipeline, not a
+ * separate algorithm: every stage runs unchanged and only the effective output
+ * resolution is reduced, so the lattice, angles, sampling and thresholding stay
+ * the same at that resolution.
+ *
+ * The effective resolution is either an integer division of the production DPI
+ * (`divisor`, at least 2 — a divisor of 1 would allocate full-resolution
+ * rasters) or a target DPI strictly below it.
+ */
+export type PreviewSettings =
+  | { readonly mode: 'divisor'; readonly divisor: number }
+  | { readonly mode: 'target-dpi'; readonly dpi: number };
+
+/**
  * The single public screening request envelope. `TProcessAttributes` mirrors the
  * profile's typed, process-specific attribute slot so an attributed profile stays
  * representable; the default base profile carries none.
+ *
+ * `output.dpi` is always the production resolution the profile is asked to meet,
+ * including when `preview` is present: preview records its reduced effective
+ * resolution in the snapshot instead of rewriting the declared output.
  */
 export interface ScreeningRequest<TProcessAttributes = never> {
   readonly input: ContinuousToneInput;
   readonly profile: ProductionProfile<TProcessAttributes>;
   readonly output: OutputSettings;
+  readonly preview?: PreviewSettings;
 }
 
 export type OutcomeStatus = 'completed' | 'rejected' | 'cancelled';
