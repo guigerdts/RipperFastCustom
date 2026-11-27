@@ -20,6 +20,14 @@ Hard rules enforced by tests, not by goodwill:
 - Run `gga run` as the mandatory quality gate before committing. Never disable, skip or
   bypass the pre-commit hook.
 
+## Commit budget
+
+- Keep each commit within 400 authored changed lines (additions plus deletions), counting
+  generated files as zero. A larger change is split into sequential work-unit commits so
+  GGA reviews a bounded payload and the pre-commit gate stays fast and meaningful.
+- Each commit is one coherent work unit: behaviour, its tests and its docs together. If a
+  unit cannot fit the budget, commit it in slices that each leave the tree green.
+
 ## Memory (Engram)
 
 The project key is `ripperfastcustom`, resolved from the repository directory name and
