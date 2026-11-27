@@ -30,8 +30,9 @@ Hard rules enforced by tests, not by goodwill:
 
 ## Memory (Engram)
 
-The project key is `ripperfastcustom`, resolved from the repository directory name and
-not from the `origin` remote. Renaming the directory splits memory into a new project.
+The project key is `ripperfastcustom`, derived from the `origin` remote repository name
+(`guigerdts/RipperFastCustom`), not from the local directory name. Renaming the remote
+changes the project key; renaming only the local directory does not.
 
 - Search memory before work that may have prior context: `mem_search` / `mem_context`
   scoped to `ripperfastcustom`.
