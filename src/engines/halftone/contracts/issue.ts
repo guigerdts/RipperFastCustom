@@ -99,6 +99,7 @@ export const ISSUE_REGISTRY = {
   'geometry.clipped_trace': { severity: 'warning', scope: 'geometry' },
   'output.invalid_dimension': { severity: 'error', scope: 'output' },
   'output.unsupported_resolution': { severity: 'error', scope: 'output' },
+  'output.preview_not_accepted': { severity: 'error', scope: 'output' },
   'output.snapshot_invalid': { severity: 'error', scope: 'output' },
   'preview.requested': { severity: 'info', scope: 'preview' },
   'preview.invalid_settings': { severity: 'error', scope: 'preview' },

@@ -101,6 +101,7 @@ const TAXONOMY_TABLE = [
   ['geometry.insufficient_addressability', 'warning', 'geometry'],
   ['geometry.clipped_trace', 'warning', 'geometry'],
   ['output.unsupported_resolution', 'error', 'output'],
+  ['output.preview_not_accepted', 'error', 'output'],
   ['preview.requested', 'info', 'preview'],
   ['preview.invalid_settings', 'error', 'preview'],
 ] as const;
