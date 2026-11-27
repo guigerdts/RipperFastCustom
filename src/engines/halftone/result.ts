@@ -13,8 +13,9 @@
  */
 
 import { hashCanonical, sha256Hex } from './canonical';
-import { createIssue, resolveOutcomeStatus, toJsonValue } from './contracts/issue';
+import { createIssue, finalizeIssues, resolveOutcomeStatus, toJsonValue } from './contracts/issue';
 import type { Issue } from './contracts/issue';
+import { validateScreeningRequest } from './contracts/validation';
 import { CANONICALISATION_VERSION } from './contracts/separation';
 import type { IccConverter, MaskSource, SeparationDeclaration } from './contracts/separation';
 import type { ContinuousToneInput, ScreeningRequest } from './contracts/request';
@@ -284,6 +285,7 @@ function profileParameterHash(profile: ProductionProfile<unknown>): string {
     version: profile.version,
     processKind: profile.processKind,
     minimumCellPixels: profile.minimumCellPixels ?? null,
+    minimumInputSamplesPerScreenLine: profile.minimumInputSamplesPerScreenLine ?? null,
     allowedOutputResolutions: profile.allowedOutputResolutions ?? [],
     channels: profile.channels.map((channel) => ({
       id: channel.id,
@@ -512,6 +514,21 @@ function assembleChannel(options: {
 export function assembleScreeningResult<TProcessAttributes = never>(
   input: AssembleInput<TProcessAttributes>,
 ): ScreeningResult {
+  return finalizeEnvelope(runScreeningPipeline(input));
+}
+
+/**
+ * Applies the envelope-wide rules: the same condition reported by more than one
+ * stage is collapsed to one issue, and the surviving issues are ordered
+ * deterministically by stage, code and channel.
+ */
+function finalizeEnvelope(result: ScreeningResult): ScreeningResult {
+  return { ...result, issues: finalizeIssues(result.issues) } as ScreeningResult;
+}
+
+function runScreeningPipeline<TProcessAttributes = never>(
+  input: AssembleInput<TProcessAttributes>,
+): ScreeningResult {
   const request = input.request;
 
   if (input.isCancelled?.()) {
@@ -521,6 +538,14 @@ export function assembleScreeningResult<TProcessAttributes = never>(
   const gate = validateInputContract(request.input);
   if (gate.status === 'rejected') {
     return { status: 'rejected', issues: gate.issues };
+  }
+
+  // Integrated validation: profile contract, declared constraints, mesh,
+  // allowed output resolution and both sampling checks. Warnings travel with
+  // the run; an error stops it before any raster is allocated.
+  const configuration = validateScreeningRequest(request);
+  if (resolveOutcomeStatus(configuration) === 'rejected') {
+    return { status: 'rejected', issues: [...gate.issues, ...configuration] };
   }
 
   const separated = separate({
@@ -583,7 +608,7 @@ export function assembleScreeningResult<TProcessAttributes = never>(
     return { status: 'rejected', issues: writeMask.issues };
   }
 
-  const issues: Issue[] = [...gate.issues, ...separated.issues, ...tonal.issues];
+  const issues: Issue[] = [...gate.issues, ...configuration, ...separated.issues, ...tonal.issues];
   const rasters: ChannelRaster[] = [];
   const channels: ChannelResultMetadata[] = [];
   const snapshotChannels: SnapshotChannel[] = [];
@@ -693,6 +718,7 @@ export function assembleScreeningResult<TProcessAttributes = never>(
       sourceKind: request.input.sourceKind ?? 'continuous-tone',
       samplesPerScreenLine: commonFrequency === null ? null : request.input.ppi / commonFrequency,
       minimumCellPixels: request.profile.minimumCellPixels ?? null,
+      minimumInputSamplesPerScreenLine: request.profile.minimumInputSamplesPerScreenLine ?? null,
     },
     canvas: {
       width: canvas.width,

@@ -487,9 +487,9 @@ describe('snapshot golden and bounds', () => {
 
     const text = snapshotCanonicalText(result.snapshot);
     expect(result.snapshot.hash).toBe(
-      'cab7c3a948b8a0ca9ad2f38ec0be357351ecf844e9e287bf01b209ee9e393baa',
+      'e37cde12dd156a1989a209361eac385be59f7afb90532273bb0982797f84967d',
     );
-    expect(text.length).toBe(2424);
+    expect(text.length).toBe(2464);
     expect(text.startsWith('{"canonicalisationVersion":"1","canvas":')).toBe(true);
     expect(text).toContain('"quantisationRule":"floor(x*65535+0.5)/65535"');
     expect(text).toContain('"cellPixelCount":0x4030000000000000');

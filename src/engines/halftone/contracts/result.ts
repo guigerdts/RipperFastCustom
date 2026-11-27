@@ -97,6 +97,8 @@ export interface SnapshotInput {
   readonly samplesPerScreenLine: number | null;
   /** The profile's declared minimum cell size, in output pixels. */
   readonly minimumCellPixels: number | null;
+  /** The profile's declared minimum input samples per screen line, when any. */
+  readonly minimumInputSamplesPerScreenLine: number | null;
 }
 
 /** Effective canvas characteristics. */
