@@ -1,7 +1,7 @@
 # 08: Result assembly, self-contained snapshot and reproducibility
 
 Type: task
-Status: ready-for-agent
+Status: done
 Feature: halftone-engine
 Spec ticket: 7 of 12
 Spec: ../spec.md
