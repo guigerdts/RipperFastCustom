@@ -1,7 +1,7 @@
 # 12: Performance and memory benchmark harness
 
 Type: task
-Status: ready-for-agent
+Status: done
 Feature: halftone-engine
 Spec ticket: 11 of 12
 Spec: ../spec.md
