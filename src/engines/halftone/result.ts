@@ -19,6 +19,7 @@ import { validateScreeningRequest } from './contracts/validation';
 import { CANONICALISATION_VERSION } from './contracts/separation';
 import type { IccConverter, MaskSource, SeparationDeclaration } from './contracts/separation';
 import type { ContinuousToneInput, ScreeningRequest } from './contracts/request';
+import type { CancellationToken } from './contracts/cancellation';
 import type { InkChannel, ProductionProfile } from './contracts/profile';
 import type { AmScreeningConfiguration } from './contracts/screening';
 import type { AddressabilityReport, SamplingImage } from './contracts/screening';
@@ -64,8 +65,15 @@ export interface AssembleInput<TProcessAttributes = never> {
    * exactly the whole-image bytes.
    */
   readonly tiles?: readonly OutputTile[];
-  /** Consulted between channels; a true result yields a cancelled run. */
-  readonly isCancelled?: () => boolean;
+  /**
+   * Cooperative cancellation token. When present it is consulted exactly once
+   * per output row per channel, including rows whose pixels a tile mask would
+   * skip. The first call is the entry check before validation and is counted
+   * as the first channel's row 0; the total is therefore bounded by output
+   * rows times channels. A `true` result aborts the run and no raster or
+   * snapshot escapes.
+   */
+  readonly isCancelled?: CancellationToken;
 }
 
 function screeningOf(channel: InkChannel): AmScreeningConfiguration | undefined {
@@ -379,6 +387,16 @@ interface ChannelAssemblyFailure {
   readonly issues: readonly Issue[];
 }
 
+/**
+ * A channel whose rasterization was stopped by the cancellation token. The
+ * partially filled raster is local to the assembly and is discarded on return,
+ * so no partial raster and no partial snapshot can escape as a result.
+ */
+interface ChannelCancelled {
+  readonly ok: false;
+  readonly cancelled: true;
+}
+
 /** Assembles the completed result for one channel, or reports why it cannot. */
 function assembleChannel(options: {
   readonly channel: TonalChannelResult;
@@ -389,8 +407,39 @@ function assembleChannel(options: {
   readonly canvas: CanvasDimensions;
   readonly outputLattice: Lattice;
   readonly writeMask: Uint8Array | null;
-}): ChannelAssembly | ChannelAssemblyFailure {
+  readonly isCancelled?: CancellationToken;
+  /**
+   * True when the pipeline's entry check already covered output row 0, so this
+   * channel must not consult the token for it a second time.
+   */
+  readonly skipFirstRowCheck?: boolean;
+}): ChannelAssembly | ChannelAssemblyFailure | ChannelCancelled {
   const { channel, declared, screening, input, canvas, outputLattice, writeMask } = options;
+
+  // Cancellation is consulted at most once per output row for this channel.
+  // `rowChecked` keeps that bound exact: a cell's visible pixels are
+  // row-major, and every output row is covered by at least one cell, so the
+  // token is called once when a row is first reached and never per pixel.
+  // Rows whose pixels a tile mask would skip are still checked, because the
+  // token is consulted before the mask test.
+  const token = options.isCancelled;
+  const rowChecked = token === undefined ? null : new Uint8Array(canvas.height);
+  if (rowChecked !== null && options.skipFirstRowCheck === true) rowChecked[0] = 1;
+
+  const cancelledAtRow = (row: number): boolean => {
+    if (token === undefined || rowChecked === null) return false;
+    if (row < 0 || row >= canvas.height) return false;
+    if (rowChecked[row] === 1) return false;
+    rowChecked[row] = 1;
+    return token() === true;
+  };
+
+  // Row 0 is checked before this channel does its own work, so a cancellation
+  // that arrived while the previous channel was being assembled is observed
+  // before the input is normalised and the raster is allocated. The first
+  // channel skips this call because the pipeline's entry check already covered
+  // its row 0, which keeps the total at exactly one check per row per channel.
+  if (cancelledAtRow(0)) return { ok: false, cancelled: true };
 
   const inputLatticeResult = createLattice({
     resolution: input.ppi,
@@ -436,7 +485,12 @@ function assembleChannel(options: {
       if (rasterized.status === 'rejected') return { ok: false, issues: rasterized.issues };
       if (!rasterized.evaluated) continue;
 
+      let lastRow = -1;
       for (const pixel of rasterized.pixels) {
+        if (pixel.l !== lastRow) {
+          if (cancelledAtRow(pixel.l)) return { ok: false, cancelled: true };
+          lastRow = pixel.l;
+        }
         const index = pixel.l * canvas.width + pixel.k;
         if (writeMask !== null && writeMask[index] === 0) continue;
         raster[index] = pixel.marked ? 1 : 0;
@@ -633,11 +687,12 @@ function runScreeningPipeline<TProcessAttributes = never>(
   let referenceChannelId = '';
   const frequencies: number[] = [];
 
-  for (const channel of tonal.channels) {
-    if (input.isCancelled?.()) {
-      return { status: 'cancelled', issues };
-    }
+  // The entry check above already consulted the token once. That call is
+  // attributed to the first channel's output row 0, so the first channel must
+  // not consult it again for that row. Every other channel checks every row.
+  let isFirstChannel = true;
 
+  for (const channel of tonal.channels) {
     const declared = request.profile.channels.find((entry) => entry.id === channel.id);
     const screening = declared === undefined ? undefined : screeningOf(declared);
     if (declared === undefined || screening === undefined) {
@@ -681,9 +736,17 @@ function runScreeningPipeline<TProcessAttributes = never>(
       canvas,
       outputLattice: outputLatticeResult.lattice,
       writeMask: writeMask.mask,
+      isCancelled: input.isCancelled,
+      skipFirstRowCheck: isFirstChannel,
     });
+    isFirstChannel = false;
 
     if (!assembled.ok) {
+      if ('cancelled' in assembled) {
+        // The partial raster and every channel assembled so far stay local to
+        // this call and are released on return; only diagnostics escape.
+        return { status: 'cancelled', issues };
+      }
       return { status: 'rejected', issues: [...issues, ...assembled.issues] };
     }
 
