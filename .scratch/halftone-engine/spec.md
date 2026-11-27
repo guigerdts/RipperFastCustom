@@ -542,8 +542,11 @@ rejected with `separation.unreproducible_transform`.
 **Canonicalisation.** The canonical form is versioned. Keys are sorted by Unicode code point;
 encoding is UTF-8; insignificant whitespace is absent; numbers are encoded as the 16 hexadecimal
 digits of the IEEE-754 binary64 bit pattern in big-endian order prefixed by `0x`; binary payloads,
-including ICC profile bytes, are encoded as lowercase base64 without line breaks; locale,
-timestamps, paths and host identifiers are absent. The same effective parameters produce the same
+including ICC profile bytes, are encoded as standard case-preserving base64 (RFC 4648 section 4)
+without line breaks; locale, timestamps, paths and host identifiers are absent. Case is preserved
+because base64 is case-sensitive: folding it to lowercase is not injective, so `0x00` and `0x68`
+would both encode as `aa==` and two distinct payloads would share one canonical record, defeating
+content addressing. The same effective parameters produce the same
 canonical bytes and the same hash on every run. The hash algorithm and canonicalisation version are
 recorded; SHA-256 is the v1 algorithm. A golden test pins one canonical byte sequence and its hash.
 

@@ -5,4 +5,5 @@ export * from './screening';
 export * from './profile';
 export * from './separation';
 export * from './request';
+export * from './result';
 export * from './validation';

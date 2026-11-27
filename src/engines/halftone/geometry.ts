@@ -160,6 +160,50 @@ export function locateCell(point: Vector2, lattice: Lattice): CellAddress {
   return { i, j, alpha: a - i, beta: b - j };
 }
 
+/** The cell index window that can cover a canvas. */
+export interface CellIndexRange {
+  readonly minI: number;
+  readonly maxI: number;
+  readonly minJ: number;
+  readonly maxJ: number;
+}
+
+/**
+ * The inclusive cell index window that can cover the canvas, padded by one
+ * cell.
+ *
+ * The canvas is convex and cell indexing is affine, so the four corner cells
+ * bound every cell that intersects it; the extra ring guards against a cell
+ * whose interior reaches the canvas while all four canvas corners lie
+ * elsewhere. Both addressability and rasterization use this same bound, so
+ * their counts cannot drift apart.
+ */
+export function cellIndexRange(
+  lattice: Lattice,
+  canvas: Pick<CanvasDimensions, 'width' | 'height'>,
+): CellIndexRange {
+  const cornerCells = [
+    locateCell({ x: 0, y: 0 }, lattice),
+    locateCell({ x: canvas.width, y: 0 }, lattice),
+    locateCell({ x: 0, y: canvas.height }, lattice),
+    locateCell({ x: canvas.width, y: canvas.height }, lattice),
+  ];
+
+  let minI = Number.POSITIVE_INFINITY;
+  let maxI = Number.NEGATIVE_INFINITY;
+  let minJ = Number.POSITIVE_INFINITY;
+  let maxJ = Number.NEGATIVE_INFINITY;
+
+  for (const cell of cornerCells) {
+    if (cell.i < minI) minI = cell.i;
+    if (cell.i > maxI) maxI = cell.i;
+    if (cell.j < minJ) minJ = cell.j;
+    if (cell.j > maxJ) maxJ = cell.j;
+  }
+
+  return { minI: minI - 1, maxI: maxI + 1, minJ: minJ - 1, maxJ: maxJ + 1 };
+}
+
 /**
  * Returns the four corners of cell `(i, j)` in the lattice's space. The corners
  * follow `origin + (i + di) * u + (j + dj) * v` for `(di, dj)` in

@@ -1,4 +1,3 @@
-import type { Issue } from './issue';
 import type { ProductionProfile } from './profile';
 
 export type BitDepth = 8 | 16;
@@ -51,21 +50,3 @@ export interface ScreeningRequest<TProcessAttributes = never> {
 }
 
 export type OutcomeStatus = 'completed' | 'rejected' | 'cancelled';
-
-/** Rasters, snapshot and stage summaries are added by ticket 08. */
-export interface CompletedOutcome {
-  readonly status: 'completed';
-  readonly issues: readonly Issue[];
-}
-
-export interface RejectedOutcome {
-  readonly status: 'rejected';
-  readonly issues: readonly Issue[];
-}
-
-export interface CancelledOutcome {
-  readonly status: 'cancelled';
-  readonly issues: readonly Issue[];
-}
-
-export type ScreeningOutcome = CompletedOutcome | RejectedOutcome | CancelledOutcome;

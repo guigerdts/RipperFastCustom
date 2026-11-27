@@ -98,6 +98,14 @@ export interface IccSeparation {
   readonly mode: 'icc';
   readonly identity: TransformIdentity;
   readonly provenance: IccProvenance;
+  /**
+   * The source profile bytes captured for the snapshot. A hash identifies
+   * content; it cannot reproduce it, so the bytes (or a content-addressed
+   * immutable artifact) must be captured for a reproducible run.
+   */
+  readonly sourceProfileBytes?: Uint8Array;
+  /** The destination profile bytes captured for the snapshot. */
+  readonly destinationProfileBytes?: Uint8Array;
 }
 
 export type SeparationDeclaration =

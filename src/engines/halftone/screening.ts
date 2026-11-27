@@ -31,6 +31,7 @@ import type {
 import type { CellFootprint, Lattice, Vector2 } from './contracts/geometry';
 import {
   cellFootprint,
+  cellIndexRange,
   clampInputPixel,
   coverageWeights,
   enumerateVisibleFootprint,
@@ -468,30 +469,7 @@ export function computeAddressability(input: AddressabilityInput): Addressabilit
   }
 
   const { lattice, canvas } = input;
-  const cornerCells = [
-    locateCell({ x: 0, y: 0 }, lattice),
-    locateCell({ x: canvas.width, y: 0 }, lattice),
-    locateCell({ x: 0, y: canvas.height }, lattice),
-    locateCell({ x: canvas.width, y: canvas.height }, lattice),
-  ];
-
-  let iMin = Number.POSITIVE_INFINITY;
-  let iMax = Number.NEGATIVE_INFINITY;
-  let jMin = Number.POSITIVE_INFINITY;
-  let jMax = Number.NEGATIVE_INFINITY;
-  for (const cell of cornerCells) {
-    if (cell.i < iMin) iMin = cell.i;
-    if (cell.i > iMax) iMax = cell.i;
-    if (cell.j < jMin) jMin = cell.j;
-    if (cell.j > jMax) jMax = cell.j;
-  }
-  // The canvas is convex and cell indexing is affine, so the corner cells bound
-  // every cell that intersects it; the extra ring guards against a cell whose
-  // interior reaches the canvas while all four canvas corners lie elsewhere.
-  iMin -= 1;
-  iMax += 1;
-  jMin -= 1;
-  jMax += 1;
+  const { minI: iMin, maxI: iMax, minJ: jMin, maxJ: jMax } = cellIndexRange(lattice, canvas);
 
   const counts: number[] = [];
   const coverage = new Set<number>();

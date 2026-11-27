@@ -78,9 +78,12 @@ export const ISSUE_REGISTRY = {
   'separation.invalid_transform_output': { severity: 'error', scope: 'separation' },
   'separation.mask_source_missing': { severity: 'error', scope: 'separation' },
   'separation.mask_source_invalid': { severity: 'error', scope: 'separation' },
+  'separation.unreproducible_transform': { severity: 'error', scope: 'separation' },
   'geometry.invalid_input': { severity: 'error', scope: 'geometry' },
   'geometry.empty_canvas': { severity: 'error', scope: 'geometry' },
   'geometry.unknown_dot_shape': { severity: 'error', scope: 'geometry' },
+  'output.invalid_dimension': { severity: 'error', scope: 'output' },
+  'output.snapshot_invalid': { severity: 'error', scope: 'output' },
 } as const satisfies Record<string, IssueDefinition>;
 
 export type IssueCode = keyof typeof ISSUE_REGISTRY;
