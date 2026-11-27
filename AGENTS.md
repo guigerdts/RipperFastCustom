@@ -42,6 +42,20 @@ changes the project key; renaming only the local directory does not.
   missing write in the final report. Never claim an observation was persisted when it
   was not.
 
+### Recovery when plugin writes fail
+
+Only when a plugin-driven write returns `could not resolve an authoritative OpenCode
+runtime session`, two things are stale and both must be repaired:
+
+1. The Engram runtime lease: call `mem_session_start` with the current authoritative
+   session id and this repository directory. A lease lasts 30 minutes and reopening an
+   existing session does not renew it.
+2. The session's OpenCode project binding: several project ids can point at the same
+   worktree, and a session bound to an older id is rejected as `foreign-project`. Re-bind
+   the session with the supported session move to this repository directory.
+
+Never edit the Engram or OpenCode databases by hand for either problem.
+
 ## Workflow (ODD)
 
 Every request runs Organic Driven Development: authorize, explore, resolve uncertainty,
