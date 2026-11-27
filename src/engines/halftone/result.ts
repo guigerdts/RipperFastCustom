@@ -43,6 +43,7 @@ import { computeAddressability, rasterizeCell, sampleCellValue } from './screeni
 import { separate } from './separation';
 import { sealSnapshot, toCanonicalValue } from './snapshot';
 import { applyTonalChain } from './tonal';
+import { previewRequestedIssue, resolvePreview } from './preview';
 
 /**
  * Largest raster this engine will allocate per channel. It bounds one
@@ -548,6 +549,17 @@ function runScreeningPipeline<TProcessAttributes = never>(
     return { status: 'rejected', issues: [...gate.issues, ...configuration] };
   }
 
+  // Preview is a mode of this same pipeline: it only lowers the effective output
+  // resolution, so every stage below runs unchanged. An unusable preview setting
+  // is rejected here, before any buffer is allocated.
+  const preview = resolvePreview(request.output.dpi, request.preview);
+  if (preview.mode === 'rejected') {
+    return {
+      status: 'rejected',
+      issues: [...gate.issues, ...configuration, ...preview.issues],
+    };
+  }
+
   const separated = separate({
     input: request.input,
     profile: request.profile,
@@ -582,7 +594,7 @@ function runScreeningPipeline<TProcessAttributes = never>(
     inputWidth: request.input.width,
     inputHeight: request.input.height,
     ppi: request.input.ppi,
-    dpi: request.output.dpi,
+    dpi: preview.resolution,
   });
   if (canvasResult.status === 'rejected') {
     return { status: 'rejected', issues: canvasResult.issues };
@@ -609,6 +621,9 @@ function runScreeningPipeline<TProcessAttributes = never>(
   }
 
   const issues: Issue[] = [...gate.issues, ...configuration, ...separated.issues, ...tonal.issues];
+  if (preview.mode === 'preview') {
+    issues.push(previewRequestedIssue(preview.settings, request.output.dpi, preview.resolution));
+  }
   const rasters: ChannelRaster[] = [];
   const channels: ChannelResultMetadata[] = [];
   const snapshotChannels: SnapshotChannel[] = [];
@@ -707,7 +722,7 @@ function runScreeningPipeline<TProcessAttributes = never>(
       parameterHash: profileParameterHash(request.profile as ProductionProfile<unknown>),
     },
     process: { kind: request.profile.processKind, screeningMethod: 'am' },
-    output: { dpi: canvas.dpi, lpi: commonFrequency },
+    output: { dpi: request.output.dpi, lpi: commonFrequency },
     input: {
       width: request.input.width,
       height: request.input.height,
@@ -752,7 +767,10 @@ function runScreeningPipeline<TProcessAttributes = never>(
           }
         : null,
     },
-    preview: { enabled: false, resolution: null },
+    preview:
+      preview.mode === 'preview'
+        ? { enabled: true, resolution: preview.resolution }
+        : { enabled: false, resolution: null },
   };
 
   const snapshot: ResultSnapshot = sealSnapshot(unsealed);
