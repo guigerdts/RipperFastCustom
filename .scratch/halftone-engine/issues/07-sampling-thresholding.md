@@ -14,7 +14,7 @@ recorded. Output is binary per pixel per channel. Dot area grows monotonically w
 value for a fixed geometry. Addressability is enumerated from the actual thresholding result, not
 from `cell pixels + 1`.
 
-**Blocked by:** 06 (AM geometry).
+Blocked by: 06
 
 **Issue contract:** Emits only issues registered by the shared contract in 02; no module-local code
 is introduced.
@@ -78,9 +78,10 @@ randomness). It exports:
   `addressableCoverageCount`, `coverages` and `cellsEvaluated`.
 
 **Types:** `src/engines/halftone/contracts/screening.ts` adds `DotShape`, `SamplingImage`,
-`SpotFunction`, `SpotFunctionResult`, `CellSample`, `SamplingResult`, `ScreenPixelDecision`,
-`RasterizationInput`, `RasterizationResult`, `AddressabilityInput`, `AddressabilityReport` and
-`AddressabilityResult`. Exported through `contracts/index.ts`.
+`SamplingFallback`, `SpotFunction`, `SpotFunctionResult`, `SampleCellInput`, `SampleCellResult`,
+`ScreenPixelDecision`, `RasterizeCellInput`, `RasterizeCellResult`, `AddressabilityInput`,
+`AddressabilityReport` and `AddressabilityResult`. Each result union exposes its `Accepted*` and
+`Rejected*` members. Exported through `contracts/index.ts`.
 
 **Registered codes:** one new central code in `src/engines/halftone/contracts/issue.ts`, severity
 `error`, scope `geometry`: `geometry.unknown_dot_shape`. Malformed input reuses
