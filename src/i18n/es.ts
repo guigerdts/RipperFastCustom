@@ -39,6 +39,10 @@ export const es = {
   'dashboard.capabilities': 'Capacidades',
   'dashboard.capabilitiesSummary':
     '{available} disponibles · {unavailable} no disponibles · {unknown} sin determinar',
+  'dashboard.halftoneFlow': 'Flujo de semitono',
+  'dashboard.halftoneFlow.ready': 'Disponible',
+  'dashboard.halftoneFlow.blocked': 'No disponible en esta versión',
+  'dashboard.halftoneFlow.missing': 'Falta: {list}',
   'dashboard.noDocumentHint': 'Abre un documento en Photoshop para ver sus dimensiones.',
 
   'pending.title': 'Módulo pendiente',

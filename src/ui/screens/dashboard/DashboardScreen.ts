@@ -13,6 +13,9 @@ export function DashboardScreen(context: AppContext): HTMLElement {
   const count = (state: string): number =>
     capabilities.filter((capability) => capability.state === state).length;
 
+  const flowBlockers = host.capabilities.halftoneFlowBlockers();
+  const flowReady = flowBlockers.length === 0;
+
   const activeDoc = host.documents.getActiveDocumentInfo();
   const width = activeDoc?.width ?? null;
   const height = activeDoc?.height ?? null;
@@ -32,6 +35,20 @@ export function DashboardScreen(context: AppContext): HTMLElement {
       host.capabilities.apiVersion !== null ? String(host.capabilities.apiVersion) : na,
     ),
     StatusRow(t('dashboard.manifestVersion'), String(DECLARED_MANIFEST_VERSION)),
+    StatusRow(
+      t('dashboard.halftoneFlow'),
+      flowReady
+        ? Badge(t('dashboard.halftoneFlow.ready'), 'ok')
+        : Badge(t('dashboard.halftoneFlow.blocked'), 'muted'),
+    ),
+    ...(flowReady
+      ? []
+      : [
+          el('p', {
+            className: 'rfc-screen__subtitle',
+            text: t('dashboard.halftoneFlow.missing', { list: flowBlockers.join(', ') }),
+          }),
+        ]),
     StatusRow(t('common.language'), LOCALE_LABELS[i18n.locale] ?? i18n.locale),
   ]);
 

@@ -38,6 +38,10 @@ export const en: Record<TranslationKey, string> = {
   'dashboard.capabilities': 'Capabilities',
   'dashboard.capabilitiesSummary':
     '{available} available · {unavailable} not available · {unknown} undetermined',
+  'dashboard.halftoneFlow': 'Halftone flow',
+  'dashboard.halftoneFlow.ready': 'Available',
+  'dashboard.halftoneFlow.blocked': 'Not available on this version',
+  'dashboard.halftoneFlow.missing': 'Missing: {list}',
   'dashboard.noDocumentHint': 'Open a document in Photoshop to see its dimensions.',
 
   'pending.title': 'Module pending',

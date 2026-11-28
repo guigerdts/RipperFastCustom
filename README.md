@@ -73,27 +73,28 @@ Load `dist/` into Photoshop with UXP Developer Tool:
 ## Repository layout
 
 ```
-manifest.json            UXP manifest v4 (source of truth; copied into dist/)
+manifest.json            UXP manifest v4, modern stage (apiVersion 2, PS 24.4+)
+manifest-legacy.json     UXP manifest v4, legacy stage (apiVersion 1, PS 22.0–24.3)
 index.html               Panel HTML template (theme inlined at build time)
-scripts/build.mjs        Assembles dist/
+scripts/build.mjs        Assembles dist/ and dist-legacy/ from one bundle
 src/
   main.ts                Plugin entrypoint
   app/                   Bootstrap and application context
   ui/                    Shell, screens, components, theme
   adapters/              The ONLY place allowed to touch Photoshop/UXP modules
-    capability.ts        Capability contract
-    photoshop/api-v1/    API v1 implementation
+    capability.ts        Capability contract + halftone flow requirements
+    photoshop/dom/       DOM adapter, shared by both staged manifests
     uxp/                 UXP environment service
     runtime/             Injectable module loader (test seam)
   engines/               Pure processing kernels (boundaries only, no code yet)
   modules/               Feature module contracts + registry (all pending)
   services/              Storage (session) and diagnostics
   i18n/                  Spanish (canonical) + English dictionaries
-  validation/            Manifest, config and version validation
+  validation/            Manifest, staged-set, config and version validation
   constants/ types/      Shared constants and host typings
 tests/
   unit/                  Host-independent behaviour
-  compatibility/         Manifest + architecture boundary contracts
+  compatibility/         Manifest, staged-set + architecture boundary contracts
   integration/           Declared, SKIPPED — requires a real Photoshop host
 docs/                    Architecture, compatibility, development, decisions, roadmap
 ```
