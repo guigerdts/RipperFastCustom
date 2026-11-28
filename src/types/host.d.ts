@@ -75,6 +75,41 @@ declare module 'uxp' {
     readonly uxp?: string;
   }
 
+  /**
+   * A folder entry. Only the members the profile store uses are declared;
+   * everything is feature-detected before it is called.
+   */
+  export interface UxpFileEntry {
+    readonly name: string;
+    readonly isFile?: boolean;
+    read?: () => Promise<string>;
+    write?: (contents: string) => Promise<void>;
+    delete?: () => Promise<void>;
+  }
+
+  export interface UxpFolder {
+    getEntry?: (name: string) => Promise<UxpFileEntry>;
+    getEntries?: () => Promise<UxpFileEntry[]>;
+    createFile?: (
+      name: string,
+      options?: { readonly overwrite?: boolean },
+    ) => Promise<UxpFileEntry>;
+  }
+
+  /**
+   * Plugin-private durable storage. `getDataFolder()` needs the `localFileSystem`
+   * manifest permission (`"request"`), which this build does not declare yet, so
+   * the profile store reports itself unavailable instead of assuming it exists.
+   */
+  export interface UxpLocalFileSystem {
+    readonly getDataFolder?: () => Promise<UxpFolder>;
+  }
+
+  export interface UxpStorage {
+    readonly localFileSystem?: UxpLocalFileSystem;
+  }
+
   export const host: UxpHostInfo;
   export const versions: UxpVersions;
+  export const storage: UxpStorage;
 }
