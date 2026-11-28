@@ -269,3 +269,96 @@ describe('declared determinism scope', () => {
     }
   });
 });
+
+describe('tile intersection semantics', () => {
+  // rampInput() and grayProfile() default to an 8x8 input at 100 PPI and
+  // 100 DPI, so the output canvas is exactly 8x8 pixels.
+  const OPTIONS: RunOptions = { input: rampInput(), profile: grayProfile() };
+  const CANVAS = 8;
+
+  function codesOf(result: ScreeningResult): string[] {
+    return result.issues.map((issue) => issue.code);
+  }
+
+  function expectEmptyRasters(result: ReturnType<typeof completed>): void {
+    expect(result.rasters.length).toBeGreaterThan(0);
+    for (const raster of result.rasters) {
+      expect(raster.data.length).toBe(CANVAS * CANVAS);
+      expect(raster.data.every((value) => value === 0)).toBe(true);
+    }
+  }
+
+  it('warns, but still completes, when a tile lies entirely beyond the canvas', () => {
+    const result = completed(
+      run({ ...OPTIONS, tiles: [{ x: CANVAS, y: 0, width: 4, height: 4 }] }),
+    );
+
+    const warning = result.issues.find((issue) => issue.code === 'output.tile_beyond_canvas');
+    expect(warning?.severity).toBe('warning');
+    expect(warning?.scope).toBe('output');
+    expectEmptyRasters(result);
+  });
+
+  it('warns when a tile with negative coordinates still misses the canvas', () => {
+    const result = completed(run({ ...OPTIONS, tiles: [{ x: -10, y: -10, width: 4, height: 4 }] }));
+
+    expect(codesOf(result)).toContain('output.tile_beyond_canvas');
+    expectEmptyRasters(result);
+  });
+
+  it('reports one warning per tile that misses the canvas', () => {
+    const result = completed(
+      run({
+        ...OPTIONS,
+        tiles: [
+          { x: CANVAS, y: CANVAS, width: 1, height: 1 },
+          { x: CANVAS * 10, y: 0, width: 1, height: 1 },
+        ],
+      }),
+    );
+
+    const warnings = result.issues.filter((issue) => issue.code === 'output.tile_beyond_canvas');
+    expect(warnings).toHaveLength(2);
+    expectEmptyRasters(result);
+  });
+
+  it('clips a partially outside tile without a warning and keeps the covered bytes', () => {
+    const whole = completed(run(OPTIONS));
+    const clipped = completed(
+      run({ ...OPTIONS, tiles: [{ x: -2, y: 0, width: 4, height: CANVAS }] }),
+    );
+
+    expect(codesOf(clipped)).not.toContain('output.tile_beyond_canvas');
+
+    for (let index = 0; index < whole.rasters.length; index += 1) {
+      const reference = whole.rasters[index]!;
+      const actual = clipped.rasters[index]!;
+      for (let y = 0; y < CANVAS; y += 1) {
+        for (let x = 0; x < CANVAS; x += 1) {
+          const offset = y * CANVAS + x;
+          const expected = x < 2 ? reference.data[offset] : 0;
+          expect(actual.data[offset], `channel ${reference.channelId} at ${x},${y}`).toBe(expected);
+        }
+      }
+    }
+  });
+
+  it('accepts an empty tile list as a valid empty selection with no diagnostic', () => {
+    const result = completed(run({ ...OPTIONS, tiles: [] }));
+
+    expect(codesOf(result)).not.toContain('output.tile_beyond_canvas');
+    expectEmptyRasters(result);
+  });
+
+  it('leaves a valid full-canvas tile byte-identical to the whole-image run', () => {
+    const whole = completed(run(OPTIONS));
+    const tiled = completed(
+      run({ ...OPTIONS, tiles: [{ x: 0, y: 0, width: CANVAS, height: CANVAS }] }),
+    );
+
+    expect(codesOf(tiled)).not.toContain('output.tile_beyond_canvas');
+    expect(rasterDigest(tiled)).toBe(rasterDigest(whole));
+    expect(summariesOf(tiled)).toBe(summariesOf(whole));
+    expect(tiled.snapshot.hash).toBe(whole.snapshot.hash);
+  });
+});

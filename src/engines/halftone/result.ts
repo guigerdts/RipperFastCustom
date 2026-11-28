@@ -324,9 +324,23 @@ interface WriteMask {
 }
 
 /**
- * Builds the write mask once for the whole job. A tile outside the canvas is
- * clipped; a tile with a non-positive or non-finite extent is rejected rather
- * than silently ignored.
+ * Builds the write mask once for the whole job.
+ *
+ * Tile semantics:
+ *
+ * - a tile is a write selection, not a raster definition: the raster always
+ *   spans the full canvas and only the selected pixels are computed;
+ * - a tile partially outside the canvas is clipped to the canvas, which is the
+ *   documented behaviour and needs no diagnostic;
+ * - a tile with a non-positive or non-finite extent is rejected, because that
+ *   extent describes no pixels at all and is a caller error;
+ * - a tile that lies entirely outside the canvas intersects nothing. That is a
+ *   warning, not a rejection: it is a subset of "select nothing", which the
+ *   contract allows, but it is almost always an off-by-one or a coordinate
+ *   space mismatch, so the caller must be told instead of receiving zero
+ *   coverage silently;
+ * - an empty tile list selects nothing and is valid as given, so it produces
+ *   no diagnostic.
  */
 function buildWriteMask(
   tiles: readonly OutputTile[] | undefined,
@@ -366,13 +380,33 @@ function buildWriteMask(
     const x1 = Math.min(canvas.width, tile.x + tile.width);
     const y1 = Math.min(canvas.height, tile.y + tile.height);
 
+    if (x1 <= x0 || y1 <= y0) {
+      issues.push(
+        createIssue(
+          'output.tile_beyond_canvas',
+          'An output tile does not intersect the output canvas and selects no pixels.',
+          {
+            offendingValue: toJsonValue(tile),
+            expected: 'a tile that intersects the output canvas',
+            parameter: 'tiles',
+            details: {
+              canvas: { width: canvas.width, height: canvas.height },
+            },
+          },
+        ),
+      );
+      continue;
+    }
+
     for (let y = y0; y < y1; y += 1) {
       const row = y * canvas.width;
       for (let x = x0; x < x1; x += 1) mask[row + x] = 1;
     }
   }
 
-  return { ok: issues.length === 0, issues, mask };
+  // A warning must travel with a completed run instead of rejecting it, so the
+  // mask accepts whenever no error was reported.
+  return { ok: resolveOutcomeStatus(issues) === 'completed', issues, mask };
 }
 
 interface ChannelAssembly {
@@ -674,7 +708,13 @@ function runScreeningPipeline<TProcessAttributes = never>(
     return { status: 'rejected', issues: writeMask.issues };
   }
 
-  const issues: Issue[] = [...gate.issues, ...configuration, ...separated.issues, ...tonal.issues];
+  const issues: Issue[] = [
+    ...gate.issues,
+    ...configuration,
+    ...separated.issues,
+    ...tonal.issues,
+    ...writeMask.issues,
+  ];
   if (preview.mode === 'preview') {
     issues.push(previewRequestedIssue(preview.settings, request.output.dpi, preview.resolution));
   }
