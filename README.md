@@ -107,6 +107,7 @@ docs/                    Architecture, compatibility, development, decisions, ro
 - [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) — Photoshop 22.0+ contract and version semantics
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — setup, testing, packaging, Windows/Ubuntu workflow
 - [docs/DECISIONS.md](docs/DECISIONS.md) — why each technical choice was made
+- [docs/production-profiles.md](docs/production-profiles.md) — the production-profile contract, persistence and profile UX
 - [docs/ROADMAP.md](docs/ROADMAP.md) — what lands next
 
 ---
