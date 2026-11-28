@@ -362,6 +362,28 @@ export function validateMeshDeclaration<TProcessAttributes>(
 }
 
 /**
+ * The request's own output DPI must be a finite positive number before any
+ * downstream stage reads it. This is a contract rejection, distinct from the
+ * profile policy check below: `output.unsupported_resolution` means a usable
+ * value the profile does not allow, never an unusable value.
+ */
+export function validateOutputDpiValue(outputDpi: number): Issue[] {
+  if (isPositiveThreshold(outputDpi)) return [];
+
+  return [
+    createIssue(
+      'output.invalid_resolution',
+      'The requested output DPI must be a finite positive number.',
+      {
+        offendingValue: toJsonValue(outputDpi),
+        expected: 'finite output DPI > 0',
+        parameter: 'output.dpi',
+      },
+    ),
+  ];
+}
+
+/**
  * The output DPI must satisfy the profile's declared allowed resolutions when
  * it declares any. An unenforced declaration would silently accept output the
  * profile rejects.
@@ -487,11 +509,19 @@ export function validateScreeningRequest<TProcessAttributes>(
   request: ScreeningRequest<TProcessAttributes>,
 ): Issue[] {
   const profile = request.profile;
+  // An unusable output DPI is reported once, at request level. The policy and
+  // ratio checks below are skipped for it so the caller never receives an
+  // `unsupported_resolution` or sampling issue derived from a value that was
+  // never usable. The pipeline stops on this rejection before geometry runs.
+  const dpiIssues = validateOutputDpiValue(request.output.dpi);
+  const dpiUsable = dpiIssues.length === 0;
+
   return [
+    ...dpiIssues,
     ...validateProfileContract(profile),
     ...validateMeshDeclaration(profile),
-    ...validateOutputResolution(profile, request.output.dpi),
-    ...validateSamplingRatios(profile, request.input, request.output.dpi),
+    ...(dpiUsable ? validateOutputResolution(profile, request.output.dpi) : []),
+    ...(dpiUsable ? validateSamplingRatios(profile, request.input, request.output.dpi) : []),
   ];
 }
 

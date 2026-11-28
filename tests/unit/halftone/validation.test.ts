@@ -4,6 +4,7 @@ import {
   validateProfileContract,
   validateReproductionLimits,
   validateScreeningConfiguration,
+  validateScreeningRequest,
   validateTrcControlPoints,
   type InkChannel,
   type ProductionProfile,
@@ -306,5 +307,79 @@ describe('request envelope', () => {
     };
     expect(validateProfileContract(request.profile)).toEqual([]);
     expect(request.output.dpi).toBe(600);
+  });
+});
+
+describe('output DPI validation', () => {
+  function requestWith(
+    dpi: number,
+    profile: ProductionProfile = profileOf(channel()),
+  ): ScreeningRequest {
+    return {
+      input: {
+        width: 4,
+        height: 4,
+        ppi: 300,
+        bitDepth: 8,
+        layout: 'grayscale',
+        data: new Uint8Array(16),
+      },
+      profile,
+      output: { dpi },
+    };
+  }
+
+  const invalidCases: ReadonlyArray<{ readonly label: string; readonly dpi: number }> = [
+    { label: 'zero', dpi: 0 },
+    { label: 'negative', dpi: -600 },
+    { label: 'NaN', dpi: Number.NaN },
+    { label: 'Infinity', dpi: Number.POSITIVE_INFINITY },
+    { label: '-Infinity', dpi: Number.NEGATIVE_INFINITY },
+  ];
+
+  for (const testCase of invalidCases) {
+    it(`rejects a ${testCase.label} output DPI as an invalid resolution`, () => {
+      const issues = validateScreeningRequest(requestWith(testCase.dpi));
+      const dpiIssues = issues.filter((issue) => issue.code === 'output.invalid_resolution');
+
+      expect(dpiIssues, testCase.label).toHaveLength(1);
+      expect(dpiIssues[0]?.severity, testCase.label).toBe('error');
+      expect(dpiIssues[0]?.scope, testCase.label).toBe('output');
+      expect(resolveOutcomeStatus(issues), testCase.label).toBe('rejected');
+    });
+  }
+
+  it('accepts a finite positive output DPI', () => {
+    expect(validateScreeningRequest(requestWith(600))).toEqual([]);
+  });
+
+  it('accepts any finite positive DPI when the profile declares no allowed resolutions', () => {
+    expect(validateScreeningRequest(requestWith(400))).toEqual([]);
+    expect(validateScreeningRequest(requestWith(1200))).toEqual([]);
+  });
+
+  it('enforces the declared allowed resolutions when the profile declares them', () => {
+    const profile: ProductionProfile = {
+      ...profileOf(channel()),
+      allowedOutputResolutions: [300, 600],
+    };
+
+    expect(validateScreeningRequest(requestWith(600, profile))).toEqual([]);
+
+    const rejected = validateScreeningRequest(requestWith(400, profile));
+    expect(rejected.map((issue) => issue.code)).toEqual(['output.unsupported_resolution']);
+    expect(rejected[0]?.severity).toBe('error');
+  });
+
+  it('keeps an unusable value distinct from an unsupported one', () => {
+    const profile: ProductionProfile = {
+      ...profileOf(channel()),
+      allowedOutputResolutions: [300, 600],
+    };
+    const issues = validateScreeningRequest(requestWith(Number.NaN, profile));
+    const codes = issues.map((issue) => issue.code);
+
+    expect(codes).toContain('output.invalid_resolution');
+    expect(codes).not.toContain('output.unsupported_resolution');
   });
 });
