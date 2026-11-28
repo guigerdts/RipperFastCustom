@@ -1,14 +1,16 @@
 /**
- * Assembles the installable UXP plugin folder in `dist/`.
+ * Assembles the installable UXP plugin folders in `dist/` and `dist-legacy/`.
  *
  * Steps:
  *   1. Bundle `src/main.ts` to `dist/index.js` (IIFE) through Vite.
- *   2. Copy `manifest.json` verbatim to `dist/manifest.json`.
- *   3. Inline the theme stylesheet into `dist/index.html`.
- *   4. Copy static assets when present.
+ *   2. Inline the theme stylesheet into `dist/index.html`.
+ *   3. Copy static assets when present.
+ *   4. Write the modern manifest into `dist/`.
+ *   5. Mirror the same bundle into `dist-legacy/` with the legacy manifest.
  *
- * The build is reproducible: it reads only repository files and writes only
- * inside `dist/`.
+ * Both folders carry identical code; only the manifest differs, which is the
+ * whole point of the staged builds (`docs/compatibility-uxp.md`). The build is
+ * reproducible: it reads only repository files and writes only inside `dist*`.
  */
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -18,7 +20,13 @@ import { build } from 'vite';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = path.join(root, 'dist');
+const legacyOutDir = path.join(root, 'dist-legacy');
 const THEME_PLACEHOLDER = '/*__RIPPERFAST_THEME__*/';
+
+const VARIANTS = [
+  { key: 'modern', manifest: 'manifest.json', dir: outDir },
+  { key: 'legacy', manifest: 'manifest-legacy.json', dir: legacyOutDir },
+];
 
 function fail(message) {
   throw new Error(message);
@@ -32,25 +40,35 @@ async function readJson(file) {
   }
 }
 
+function describe(manifest) {
+  const host = manifest.host ?? {};
+  const apiVersion = host.data?.apiVersion;
+  const range = host.maxVersion
+    ? `PS ${host.minVersion}–${host.maxVersion}`
+    : `PS ${host.minVersion}+`;
+  return `manifest v${manifest.manifestVersion} · api v${apiVersion} · ${range}`;
+}
+
 async function main() {
-  const manifest = await readJson(path.join(root, 'manifest.json'));
-  if (manifest.manifestVersion !== 4) {
-    fail(`manifestVersion must be 4, received ${String(manifest.manifestVersion)}`);
+  const loaded = [];
+  for (const variant of VARIANTS) {
+    const manifest = await readJson(path.join(root, variant.manifest));
+    if (manifest.manifestVersion !== 4) {
+      fail(
+        `${variant.manifest}: manifestVersion must be 4, received ${String(manifest.manifestVersion)}`,
+      );
+    }
+    loaded.push({ ...variant, manifest });
   }
 
   await rm(outDir, { recursive: true, force: true });
+  await rm(legacyOutDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
   await build({ configFile: path.join(root, 'vite.config.mjs'), logLevel: 'warn' });
 
   const bundlePath = path.join(outDir, 'index.js');
   if (!existsSync(bundlePath)) fail('bundle dist/index.js was not produced');
-
-  await writeFile(
-    path.join(outDir, 'manifest.json'),
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    'utf8',
-  );
 
   const htmlTemplate = await readFile(path.join(root, 'index.html'), 'utf8');
   if (!htmlTemplate.includes(THEME_PLACEHOLDER)) {
@@ -72,11 +90,26 @@ async function main() {
     });
   }
 
+  // The legacy folder is a copy of the modern one before the manifest is
+  // replaced, so the two packages never drift in code.
+  await cp(outDir, legacyOutDir, { recursive: true });
+  await rm(path.join(legacyOutDir, 'manifest.json'), { force: true });
+
+  for (const variant of loaded) {
+    await writeFile(
+      path.join(variant.dir, 'manifest.json'),
+      `${JSON.stringify(variant.manifest, null, 2)}\n`,
+      'utf8',
+    );
+  }
+
   const bundle = await readFile(bundlePath, 'utf8');
-  console.log(
-    `[build] dist/ ready — manifest v${manifest.manifestVersion} · api v${manifest.host.data.apiVersion} · ` +
-      `min PS ${manifest.host.minVersion} · bundle ${(bundle.length / 1024).toFixed(1)} kB`,
-  );
+  console.log(`[build] bundle ${(bundle.length / 1024).toFixed(1)} kB (one bundle, two packages)`);
+  for (const variant of loaded) {
+    console.log(
+      `[build] ${path.relative(root, variant.dir)}/ — ${variant.key} — ${describe(variant.manifest)}`,
+    );
+  }
 }
 
 main().catch((error) => {

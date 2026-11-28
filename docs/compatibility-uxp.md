@@ -140,8 +140,9 @@ Sources:
 ### D1 — One manifest cannot cover 22.0 and the imaging flow (Derived)
 
 `apiVersion` is static (V2) and `executeAsModal` requires `apiVersion: 2` (V3),
-while Photoshop 2021 has no modal implementation at all (V2). The Imaging API
-only exists from 24.2 (V4). A single manifest therefore cannot be simultaneously:
+while the hosts from 22.0 to 22.4 have no modal implementation at all (V2). The
+Imaging API only exists from 24.2 (V4). A single manifest therefore cannot be
+simultaneously:
 
 - honest about supporting 22.0, and
 - able to run modal execution and pixel I/O.
@@ -173,10 +174,10 @@ declares a floor; it never grants a capability.
 ### U1 — `apiVersion: 2` declared with a `minVersion` below 23.0
 
 Adobe says a plugin with `minVersion` below 23.0.0 gets `apiVersion` 1 _"unless
-the plugin specifies otherwise"_, but does not document what a 22.x host does
-when it is told otherwise. Because Photoshop 2021 has no modal scope, the only
-safe reading is that such a combination cannot deliver modal behaviour, and its
-load behaviour is undefined.
+the plugin specifies otherwise"_, but does not document what a host from 22.0 to
+22.4 does when it is told otherwise. Those hosts have no `core.executeAsModal`
+and no modal scope, so the only safe reading is that such a combination cannot
+deliver modal behaviour, and its load behaviour is undefined.
 
 **Consequence:** this repository never ships that combination.
 
@@ -229,7 +230,7 @@ either way.
 ### Why the split is at 24.4
 
 24.4 is the first release that exposes the `imaging` module name (V4). Splitting
-at 23.0 would create a third variant that gains modal execution but still cannot
+at 22.5 would create a third variant that gains modal execution but still cannot
 reach pixels, so it would add a package and a test matrix without adding a
 capability. Because `imaging` is still detected rather than assumed (U3), a 24.4
 host that lacks it degrades exactly like a legacy host: the flow reports the
@@ -298,7 +299,7 @@ This repository's CI runs no Photoshop. The following are implemented and
 covered by contract tests with a fake host, but are **not** validated against a
 real application, and must not be reported as such:
 
-1. `apiVersion` 1 and 2 load behaviour on 22.0 / 23.0 / 24.3 / 24.4.
+1. `apiVersion` 1 and 2 load behaviour on 22.0 / 22.5 / 24.3 / 24.4.
 2. `imaging.getPixels` on an RGB, a grayscale, a 16-bit and a CMYK document.
 3. `imaging.putPixels` into a freshly created pixel layer.
 4. Which version Creative Cloud picks from disjoint published ranges (U2).

@@ -1,4 +1,10 @@
-import { parseVersion } from './version';
+import {
+  LEGACY_API_VERSION,
+  MIN_MODAL_PHOTOSHOP_VERSION,
+  MIN_PHOTOSHOP_VERSION,
+  MODERN_API_VERSION,
+} from '../constants/app';
+import { compareVersions, parseVersion } from './version';
 
 export interface ManifestIssue {
   readonly path: string;
@@ -7,7 +13,7 @@ export interface ManifestIssue {
 
 const FORBIDDEN_PERMISSION_KEYS = ['network', 'launchProcess', 'webview', 'clipboard'] as const;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -24,10 +30,30 @@ function requireString(
   return raw;
 }
 
+function readHostVersion(
+  host: Record<string, unknown>,
+  key: string,
+  issues: ManifestIssue[],
+): string | null {
+  const raw = host[key];
+  if (raw === undefined) return null;
+  if (typeof raw !== 'string' || !parseVersion(raw)) {
+    issues.push({ path: `host.${key}`, message: 'must be a dotted numeric version' });
+    return null;
+  }
+  return raw;
+}
+
 /**
- * Structural validation of the UXP manifest against the contract this build
- * depends on: manifest v4, Photoshop host, minimum 22.0.0, explicit API v1,
- * panel entrypoint and no unnecessary permissions.
+ * Structural validation of one UXP manifest against the contract this build
+ * depends on: manifest v4, Photoshop host, a declared API version the platform
+ * can actually deliver, a coherent host range, a panel entrypoint and no
+ * unnecessary permissions.
+ *
+ * Two API versions are accepted because the product ships two staged builds
+ * (see `docs/compatibility-uxp.md`). `apiVersion: 2` requires a host range that
+ * starts at the first release with a modal scope: declaring v2 below it is the
+ * undefined combination the platform does not document.
  */
 export function validateManifest(value: unknown): readonly ManifestIssue[] {
   const issues: ManifestIssue[] = [];
@@ -59,18 +85,49 @@ export function validateManifest(value: unknown): readonly ManifestIssue[] {
     if (host['app'] !== 'PS') {
       issues.push({ path: 'host.app', message: 'must be "PS"' });
     }
-    const minVersion = host['minVersion'];
-    if (typeof minVersion !== 'string' || !parseVersion(minVersion)) {
-      issues.push({ path: 'host.minVersion', message: 'must be a dotted numeric version' });
+
+    const minVersion = readHostVersion(host, 'minVersion', issues);
+    const maxVersion = readHostVersion(host, 'maxVersion', issues);
+
+    if (minVersion && parseVersion(minVersion)) {
+      if (compareVersions(minVersion, MIN_PHOTOSHOP_VERSION) < 0) {
+        issues.push({
+          path: 'host.minVersion',
+          message: `must be ${MIN_PHOTOSHOP_VERSION} or later`,
+        });
+      }
     }
+    if (minVersion && maxVersion && parseVersion(minVersion) && parseVersion(maxVersion)) {
+      if (compareVersions(maxVersion, minVersion) < 0) {
+        issues.push({
+          path: 'host.maxVersion',
+          message: 'must not be lower than host.minVersion',
+        });
+      }
+    }
+
     const data = host['data'];
     if (!isRecord(data)) {
       issues.push({ path: 'host.data', message: 'must declare the Photoshop API version' });
-    } else if (data['apiVersion'] !== 1) {
-      issues.push({
-        path: 'host.data.apiVersion',
-        message: 'must be 1 — this build targets the Photoshop 22.0 DOM API',
-      });
+    } else {
+      // UXP makes `apiVersion` optional and infers a default from `minVersion`
+      // (< 23.0 → v1, ≥ 23.0 → v2). This build does not accept that inference:
+      // the shipped stage must say which DOM it targets, so the manifest can
+      // never silently inherit the wrong one from its own floor.
+      const apiVersion = data['apiVersion'];
+      if (apiVersion !== LEGACY_API_VERSION && apiVersion !== MODERN_API_VERSION) {
+        issues.push({
+          path: 'host.data.apiVersion',
+          message: `must be ${LEGACY_API_VERSION} or ${MODERN_API_VERSION}`,
+        });
+      } else if (apiVersion === MODERN_API_VERSION && minVersion) {
+        if (compareVersions(minVersion, MIN_MODAL_PHOTOSHOP_VERSION) < 0) {
+          issues.push({
+            path: 'host.data.apiVersion',
+            message: `apiVersion ${MODERN_API_VERSION} requires host.minVersion ${MIN_MODAL_PHOTOSHOP_VERSION} or later`,
+          });
+        }
+      }
     }
   }
 

@@ -2,81 +2,105 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validateManifest } from '../../src/validation/manifest';
-import { DECLARED_API_VERSION, MIN_PHOTOSHOP_VERSION } from '../../src/constants/app';
+import { MIN_MODAL_PHOTOSHOP_VERSION } from '../../src/constants/app';
 
-const MANIFEST_PATH = path.resolve(process.cwd(), 'manifest.json');
-const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as Record<string, unknown>;
+const read = (file: string): Record<string, unknown> =>
+  JSON.parse(readFileSync(path.resolve(process.cwd(), file), 'utf8')) as Record<string, unknown>;
 
-describe('manifest.json', () => {
-  it('passes structural validation with no issues', () => {
-    expect(validateManifest(manifest)).toEqual([]);
+const modern = read('manifest.json');
+const legacy = read('manifest-legacy.json');
+
+const clone = (source: Record<string, unknown>): Record<string, unknown> =>
+  JSON.parse(JSON.stringify(source)) as Record<string, unknown>;
+
+describe('shipped manifests', () => {
+  it('both pass structural validation with no issues', () => {
+    expect(validateManifest(modern)).toEqual([]);
+    expect(validateManifest(legacy)).toEqual([]);
   });
 
-  it('declares manifest version 4', () => {
-    expect(manifest['manifestVersion']).toBe(4);
+  it('declare manifest version 4', () => {
+    expect(modern['manifestVersion']).toBe(4);
+    expect(legacy['manifestVersion']).toBe(4);
   });
 
-  it('declares the Photoshop host with the 22.0.0 floor', () => {
-    const host = manifest['host'] as Record<string, unknown>;
-    expect(host['app']).toBe('PS');
-    expect(host['minVersion']).toBe(MIN_PHOTOSHOP_VERSION);
+  it('use two-segment host versions, the format marketplace upload requires', () => {
+    for (const manifest of [modern, legacy]) {
+      const host = manifest['host'] as Record<string, unknown>;
+      for (const key of ['minVersion', 'maxVersion']) {
+        const value = host[key];
+        if (value === undefined) continue;
+        expect(typeof value).toBe('string');
+        expect((value as string).split('.')).toHaveLength(2);
+      }
+    }
   });
 
-  it('declares Photoshop API v1 explicitly', () => {
-    const host = manifest['host'] as Record<string, unknown>;
-    const data = host['data'] as Record<string, unknown>;
-    expect(data['apiVersion']).toBe(DECLARED_API_VERSION);
-    expect(data['apiVersion']).not.toBe(2);
-  });
-
-  it('exposes exactly one panel entrypoint with a default label', () => {
-    const entrypoints = manifest['entrypoints'] as Record<string, unknown>[];
-    expect(entrypoints).toHaveLength(1);
-    const panel = entrypoints[0] as Record<string, unknown>;
-    expect(panel['type']).toBe('panel');
-    expect(typeof panel['id']).toBe('string');
-    expect((panel['label'] as Record<string, unknown>)['default']).toBe('RipperFastCustom');
-  });
-
-  it('requests no permissions', () => {
-    expect(manifest['requiredPermissions']).toEqual({});
-  });
-
-  it('keeps the product identity stable', () => {
-    expect(manifest['id']).toBe('com.ripperfastcustom.panel');
-    expect(manifest['name']).toBe('RipperFastCustom');
-    expect(manifest['version']).toBe('0.1.0');
-    expect(manifest['main']).toBe('index.html');
+  it('request no permissions in either build', () => {
+    expect(modern['requiredPermissions']).toEqual({});
+    expect(legacy['requiredPermissions']).toEqual({});
   });
 });
 
 describe('validateManifest negative cases', () => {
-  const clone = (): Record<string, unknown> =>
-    JSON.parse(JSON.stringify(manifest)) as Record<string, unknown>;
-
-  it('rejects API v2, which would break the Photoshop 22.0 target', () => {
-    const broken = clone();
+  it('rejects an apiVersion outside the supported set', () => {
+    const broken = clone(modern);
     ((broken['host'] as Record<string, unknown>)['data'] as Record<string, unknown>)['apiVersion'] =
-      2;
+      3;
     expect(validateManifest(broken).some((issue) => issue.path === 'host.data.apiVersion')).toBe(
       true,
     );
   });
 
+  it('rejects apiVersion 2 on a host range that predates the modal scope', () => {
+    const broken = clone(modern);
+    (broken['host'] as Record<string, unknown>)['minVersion'] = '22.0';
+    expect(validateManifest(broken).some((issue) => issue.path === 'host.data.apiVersion')).toBe(
+      true,
+    );
+  });
+
+  it('accepts apiVersion 2 exactly at the first modal release', () => {
+    const atFloor = clone(modern);
+    (atFloor['host'] as Record<string, unknown>)['minVersion'] = MIN_MODAL_PHOTOSHOP_VERSION;
+    expect(validateManifest(atFloor)).toEqual([]);
+  });
+
+  it('rejects a manifest that omits apiVersion and would inherit a default', () => {
+    const broken = clone(legacy);
+    const data = (broken['host'] as Record<string, unknown>)['data'] as Record<string, unknown>;
+    delete data['apiVersion'];
+    expect(validateManifest(broken).some((issue) => issue.path === 'host.data.apiVersion')).toBe(
+      true,
+    );
+  });
+
+  it('rejects a host floor below Photoshop 2021', () => {
+    const broken = clone(legacy);
+    (broken['host'] as Record<string, unknown>)['minVersion'] = '21.0';
+    expect(validateManifest(broken).some((issue) => issue.path === 'host.minVersion')).toBe(true);
+  });
+
+  it('rejects a maxVersion lower than minVersion', () => {
+    const broken = clone(legacy);
+    (broken['host'] as Record<string, unknown>)['maxVersion'] = '21.5';
+    expect(validateManifest(broken).some((issue) => issue.path === 'host.maxVersion')).toBe(true);
+  });
+
   it('rejects a manifest version other than 4', () => {
-    const broken = clone();
+    const broken = clone(modern);
     broken['manifestVersion'] = 5;
     expect(validateManifest(broken).some((issue) => issue.path === 'manifestVersion')).toBe(true);
   });
 
   it('rejects a non-Photoshop host', () => {
-    const broken = clone();
+    const broken = clone(modern);
     (broken['host'] as Record<string, unknown>)['app'] = 'AI';
     expect(validateManifest(broken).some((issue) => issue.path === 'host.app')).toBe(true);
   });
 
   it('rejects unnecessary permissions', () => {
-    const broken = clone();
+    const broken = clone(modern);
     broken['requiredPermissions'] = { network: { domains: ['https://example.com'] } };
     expect(
       validateManifest(broken).some((issue) => issue.path === 'requiredPermissions.network'),
@@ -84,7 +108,7 @@ describe('validateManifest negative cases', () => {
   });
 
   it('rejects a missing panel entrypoint', () => {
-    const broken = clone();
+    const broken = clone(modern);
     broken['entrypoints'] = [];
     expect(validateManifest(broken).some((issue) => issue.path === 'entrypoints')).toBe(true);
   });
