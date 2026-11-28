@@ -1,11 +1,6 @@
 import { translate, LOCALE_LABELS } from '../../../i18n';
 import type { AppContext } from '../../../app/context';
-import {
-  APP_NAME,
-  APP_VERSION,
-  DECLARED_API_VERSION,
-  DECLARED_MANIFEST_VERSION,
-} from '../../../constants/app';
+import { APP_NAME, APP_VERSION, DECLARED_MANIFEST_VERSION } from '../../../constants/app';
 import { Badge, Card, StatusRow } from '../../components';
 import { el } from '../../dom';
 
@@ -32,7 +27,10 @@ export function DashboardScreen(context: AppContext): HTMLElement {
     ),
     StatusRow(t('dashboard.photoshopVersion'), environment.hostVersion ?? na),
     StatusRow(t('dashboard.uxpVersion'), environment.uxpVersion ?? na),
-    StatusRow(t('dashboard.apiVersion'), String(DECLARED_API_VERSION)),
+    StatusRow(
+      t('dashboard.apiVersion'),
+      host.capabilities.apiVersion !== null ? String(host.capabilities.apiVersion) : na,
+    ),
     StatusRow(t('dashboard.manifestVersion'), String(DECLARED_MANIFEST_VERSION)),
     StatusRow(t('common.language'), LOCALE_LABELS[i18n.locale] ?? i18n.locale),
   ]);
