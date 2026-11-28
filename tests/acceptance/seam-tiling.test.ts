@@ -136,13 +136,12 @@ describe('whole-image and tiled identity', () => {
 
       for (const tiled of [vertical, quadrants, rows]) {
         expect(rasterDigest(tiled), testCase.label).toBe(rasterDigest(whole));
+        expect(summariesOf(tiled), testCase.label).toBe(summariesOf(whole));
+        expect(addressabilityOf(tiled), testCase.label).toBe(addressabilityOf(whole));
+        expect(snapshotText(tiled), testCase.label).toBe(snapshotText(whole));
+        expect(tiled.snapshot.hash, testCase.label).toBe(whole.snapshot.hash);
+        expect(tiled.channelOrder, testCase.label).toEqual(whole.channelOrder);
       }
-      expect(summariesOf(vertical), testCase.label).toBe(summariesOf(whole));
-      expect(summariesOf(quadrants), testCase.label).toBe(summariesOf(whole));
-      expect(addressabilityOf(quadrants), testCase.label).toBe(addressabilityOf(whole));
-      expect(snapshotText(vertical), testCase.label).toBe(snapshotText(whole));
-      expect(vertical.snapshot.hash, testCase.label).toBe(whole.snapshot.hash);
-      expect(vertical.channelOrder, testCase.label).toEqual(whole.channelOrder);
     }
   });
 
